@@ -572,7 +572,7 @@ Chart.defaults.plugins.legend.labels.pointStyleWidth=8;
 Chart.defaults.plugins.legend.labels.padding=12;
 Chart.defaults.plugins.legend.labels.font={size:10};
 Chart.defaults.elements.line.tension=.35;Chart.defaults.elements.line.borderWidth=2;
-Chart.defaults.elements.point.radius=0;Chart.defaults.elements.point.hoverRadius=4;
+Chart.defaults.elements.point.radius=2;Chart.defaults.elements.point.hoverRadius=5;
 Chart.defaults.scale.grid={color:"rgba(255,255,255,.05)",drawBorder:false};
 Chart.defaults.scale.ticks={padding:6,font:{size:9}};
 Chart.defaults.plugins.datalabels={display:false};
@@ -931,6 +931,36 @@ function aDS(l,d,c,f=true){return{label:l,data:d,borderColor:c,backgroundColor:f
 function lDS(l,d,c){return aDS(l,d,c,false);}
 function bDS(l,d,c){return{label:l,data:d,backgroundColor:c,borderRadius:4,barPercentage:.7};}
 
+function lastPtLabel(suffix,decimals){
+  suffix=suffix||'';decimals=decimals!==undefined?decimals:1;
+  return{display:function(ctx){return ctx.dataIndex===ctx.dataset.data.length-1;},
+    anchor:'end',align:'top',offset:4,
+    color:function(ctx){return ctx.dataset.borderColor||'#fff';},
+    font:{weight:'bold',size:10},
+    formatter:function(v){return(typeof v==='number'?v.toFixed(decimals):v)+suffix;}};
+}
+function barTopLabel(suffix,decimals){
+  suffix=suffix||'';decimals=decimals!==undefined?decimals:0;
+  return{display:true,anchor:'end',align:'top',offset:2,
+    color:'#E6EDF3',font:{weight:'600',size:9},
+    formatter:function(v){return(typeof v==='number'?(decimals>0?v.toFixed(decimals):Math.round(v)):v)+suffix;}};
+}
+function stackedTopLabel(suffix){
+  suffix=suffix||'';
+  return{display:function(ctx){
+      var dsCount=ctx.chart.data.datasets.length;
+      for(var d=dsCount-1;d>=0;d--){
+        if(!ctx.chart.getDatasetMeta(d).hidden&&ctx.chart.data.datasets[d].type!=='line'){return ctx.datasetIndex===d;}}
+      return false;},
+    anchor:'end',align:'top',offset:2,
+    color:'#E6EDF3',font:{weight:'600',size:9},
+    formatter:function(v,ctx){
+      var total=0;
+      ctx.chart.data.datasets.forEach(function(ds,di){
+        if(!ctx.chart.getDatasetMeta(di).hidden&&ds.type!=='line'){total+=Math.abs(ds.data[ctx.dataIndex]||0);}});
+      return Math.round(total)+suffix;}};
+}
+
 function renderCharts(gid){
   const g=GAMES.find(x=>x.id===gid);if(!g)return;
   const showGP=g.id==="all"||g.id==="gamepass";
@@ -946,20 +976,20 @@ function renderCharts(gid){
 
   // MAU by Platform (stacked area)
   mk("ch-"+gid+"-mauPlat",{type:"line",data:{labels:M,datasets:[
-    aDS("Console",g.mC,C.green),aDS("PC",g.mP,C.blue),aDS("Cloud",g.mCl,C.purple)]},
+    aDS("Console",g.mC,C.green),aDS("PC",g.mP,C.blue),{...aDS("Cloud",g.mCl,C.purple),datalabels:lastPtLabel('M')}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top"},datalabels:{display:false}},
       scales:{y:{stacked:true,title:{display:true,text:"MAU (M)"}},x:{grid:{display:false}}}}});
 
   // New Users (stacked bar)
   mk("ch-"+gid+"-newUsers",{type:"bar",data:{labels:M,datasets:[
-    bDS("Organic",g.org,C.green),bDS("Paid",g.paid,C.blue),
-    bDS("Viral",g.org.map(v=>+(v*.25).toFixed(2)),C.purple)]},
+    {...bDS("Organic",g.org,C.green),datalabels:stackedTopLabel('M')},{...bDS("Paid",g.paid,C.blue),datalabels:stackedTopLabel('M')},
+    {...bDS("Viral",g.org.map(v=>+(v*.25).toFixed(2)),C.purple),datalabels:stackedTopLabel('M')}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top"},datalabels:{display:false}},
       scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:"New Users (M)"}}}}});
 
   // MAU+DAU Trend
   mk("ch-"+gid+"-mauTrend",{type:"line",data:{labels:M,datasets:[
-    lDS("MAU",g.mauTr,g.color),lDS("DAU",g.dauTr,C.blue)]},
+    {...lDS("MAU",g.mauTr,g.color),datalabels:lastPtLabel('M')},{...lDS("DAU",g.dauTr,C.blue),datalabels:lastPtLabel('M')}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top"},datalabels:{display:false}},
       scales:{y:{title:{display:true,text:"Users (M)"}},x:{grid:{display:false}}}}});
 
@@ -985,32 +1015,32 @@ function renderCharts(gid){
 
   // Min per Day (bar)
   mk("ch-"+gid+"-mpd",{type:"bar",data:{labels:M,datasets:[bDS("Min/Day",g.mpd,g.color)]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:false}},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:barTopLabel('',0)},
       scales:{y:{title:{display:true,text:"Minutes"}},x:{grid:{display:false}}}}});
 
   // Stickiness (area with target line)
   mk("ch-"+gid+"-stk",{type:"line",data:{labels:M,datasets:[
     {...lDS("DAU/MAU %",g.stkTr,C.cyan),fill:true,backgroundColor:C.cyan+"15"}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:false},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:lastPtLabel('%'),
       annotation:{annotations:{tgt:{type:"line",yMin:45,yMax:45,borderColor:C.gold+"60",borderDash:[6,4],borderWidth:1,
         label:{display:true,content:"Target: 45%",position:"start",font:{size:9},color:C.gold}}}}},
       scales:{y:{title:{display:true,text:"%"},min:20,max:55},x:{grid:{display:false}}}}});
 
   // Session Length
   mk("ch-"+gid+"-sLen",{type:"line",data:{labels:M,datasets:[lDS("Session (min)",g.sLen,C.orange)]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:false}},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:lastPtLabel(' min')},
       scales:{y:{title:{display:true,text:"Min"}},x:{grid:{display:false}}}}});
 
   // Days Active
   mk("ch-"+gid+"-dAct",{type:"bar",data:{labels:M,datasets:[bDS("Days/Week",g.dAct,C.purple)]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:false}},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:barTopLabel('',1)},
       scales:{y:{title:{display:true,text:"Days"},min:0,max:7},x:{grid:{display:false}}}}});
 
   // Cross-play %
   mk("ch-"+gid+"-cpPct",{type:"line",data:{labels:M,datasets:[
     {...lDS("Cross-Play %",g.cp,C.teal),fill:true,backgroundColor:C.teal+"15"}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:false}},
-      scales:{y:{title:{display:true,text:"%"}},x:{grid:{display:false}}}}});
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:lastPtLabel('%')},
+      scales:{y:{title:{display:true,text:"%"},ticks:{callback:function(v){return v+'%';}}},x:{grid:{display:false}}}}});
 
   // Whale Analysis (horizontal bar)
   const whaleData=[60,25,10,5];
@@ -1025,85 +1055,88 @@ function renderCharts(gid){
   // Peak Concurrent Users
   const pcuData=g.mauTr.map((v,i)=>+(v*(g.stkTr[i]/100)*0.15).toFixed(2));
   mk("ch-"+gid+"-pcu",{type:"bar",data:{labels:M,datasets:[bDS("Peak Concurrent (M)",pcuData,C.pink)]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:false}},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:barTopLabel('M',1)},
       scales:{y:{title:{display:true,text:"Users (M)"}},x:{grid:{display:false}}}}});
 
   // Revenue by Stream (stacked bar)
   mk("ch-"+gid+"-revStr",{type:"bar",data:{labels:M,datasets:[
-    bDS("Subscriptions",g.rSub,C.green),bDS("MTX",g.rMtx,C.blue),
-    bDS("Advertising",g.rAd,C.gold),bDS("Licensing",g.rLic,C.purple)]},
+    {...bDS("Subscriptions",g.rSub,C.green),datalabels:stackedTopLabel('M')},{...bDS("MTX",g.rMtx,C.blue),datalabels:stackedTopLabel('M')},
+    {...bDS("Advertising",g.rAd,C.gold),datalabels:stackedTopLabel('M')},{...bDS("Licensing",g.rLic,C.purple),datalabels:stackedTopLabel('M')}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top"},datalabels:{display:false}},
-      scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:"Revenue ($M)"}}}}});
+      scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:"Revenue ($M)"},ticks:{callback:function(v){return '$'+v;}}}}}});
 
   // ARPU & ARPPU
   mk("ch-"+gid+"-arpu",{type:"line",data:{labels:M,datasets:[
-    lDS("ARPU",g.arpu,C.green),lDS("ARPPU",g.arppu,C.gold)]},
+    {...lDS("ARPU",g.arpu,C.green),datalabels:{display:function(ctx){return ctx.dataIndex===ctx.dataset.data.length-1;},anchor:'end',align:'top',offset:4,color:C.green,font:{weight:'bold',size:10},formatter:function(v){return '$'+v.toFixed(1);}}},
+    {...lDS("ARPPU",g.arppu,C.gold),datalabels:{display:function(ctx){return ctx.dataIndex===ctx.dataset.data.length-1;},anchor:'end',align:'top',offset:4,color:C.gold,font:{weight:'bold',size:10},formatter:function(v){return '$'+v.toFixed(1);}}}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top"},datalabels:{display:false}},
-      scales:{y:{title:{display:true,text:"$ per user"}},x:{grid:{display:false}}}}});
+      scales:{y:{title:{display:true,text:"$ per user"},ticks:{callback:function(v){return '$'+v;}}},x:{grid:{display:false}}}}});
 
   // MTX Conversion
   mk("ch-"+gid+"-mtxC",{type:"line",data:{labels:M,datasets:[
     {...lDS("Conv %",g.mtxC,C.orange),fill:true,backgroundColor:C.orange+"15"}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:false}},
-      scales:{y:{title:{display:true,text:"%"}},x:{grid:{display:false}}}}});
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:lastPtLabel('%')},
+      scales:{y:{title:{display:true,text:"%"},ticks:{callback:function(v){return v+'%';}}},x:{grid:{display:false}}}}});
 
   // Revenue Trend
   mk("ch-"+gid+"-revTr",{type:"line",data:{labels:M,datasets:[
     {...aDS("Revenue",g.revTr,g.color)}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:false}},
-      scales:{y:{title:{display:true,text:"$M"}},x:{grid:{display:false}}}}});
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:function(ctx){return ctx.dataIndex===ctx.dataset.data.length-1;},anchor:'end',align:'top',offset:4,color:function(ctx){return ctx.dataset.borderColor||'#fff';},font:{weight:'bold',size:10},formatter:function(v){return '$'+Math.round(v)+'M';}}},
+      scales:{y:{title:{display:true,text:"$M"},ticks:{callback:function(v){return '$'+v;}}},x:{grid:{display:false}}}}});
 
   // LTV by Segment
   const ltvCasual=sp(45,55);const ltvCore=sp(120,145);const ltvHardcore=sp(280,340);
   mk("ch-"+gid+"-ltv",{type:"line",data:{labels:M,datasets:[
-    lDS("Casual",ltvCasual,C.cyan),lDS("Core",ltvCore,C.lime),lDS("Hardcore",ltvHardcore,C.orange)]},
+    {...lDS("Casual",ltvCasual,C.cyan),datalabels:{display:function(ctx){return ctx.dataIndex===ctx.dataset.data.length-1;},anchor:'end',align:'top',offset:4,color:C.cyan,font:{weight:'bold',size:10},formatter:function(v){return '$'+Math.round(v);}}},
+    {...lDS("Core",ltvCore,C.lime),datalabels:{display:function(ctx){return ctx.dataIndex===ctx.dataset.data.length-1;},anchor:'end',align:'top',offset:4,color:C.lime,font:{weight:'bold',size:10},formatter:function(v){return '$'+Math.round(v);}}},
+    {...lDS("Hardcore",ltvHardcore,C.orange),datalabels:{display:function(ctx){return ctx.dataIndex===ctx.dataset.data.length-1;},anchor:'end',align:'top',offset:4,color:C.orange,font:{weight:'bold',size:10},formatter:function(v){return '$'+Math.round(v);}}}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top"},datalabels:{display:false}},
-      scales:{y:{title:{display:true,text:"LTV ($)"}},x:{grid:{display:false}}}}});
+      scales:{y:{title:{display:true,text:"LTV ($)"},ticks:{callback:function(v){return '$'+v;}}},x:{grid:{display:false}}}}});
 
   // Game Pass
   if(showGP){
     mk("ch-"+gid+"-gpT",{type:"bar",data:{labels:M,datasets:[
-      bDS("Core",g.gC,C.green),bDS("Ultimate",g.gU,C.purple),bDS("PC",g.gP,C.blue)]},
+      {...bDS("Core",g.gC,C.green),datalabels:stackedTopLabel('M')},{...bDS("Ultimate",g.gU,C.purple),datalabels:stackedTopLabel('M')},{...bDS("PC",g.gP,C.blue),datalabels:stackedTopLabel('M')}]},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top"},datalabels:{display:false}},
         scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:"Subs (M)"}}}}});
 
     mk("ch-"+gid+"-gpCh",{type:"line",data:{labels:M,datasets:[
       {...lDS("Churn %",g.gCh,C.red),fill:true,backgroundColor:C.red+"12"}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:false},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:lastPtLabel('%'),
         annotation:{annotations:{tgt:{type:"line",yMin:3.8,yMax:3.8,borderColor:C.gold+"60",borderDash:[6,4],borderWidth:1,
           label:{display:true,content:"Target: 3.8%",position:"start",font:{size:9},color:C.gold}}}}},
-        scales:{y:{title:{display:true,text:"%"}},x:{grid:{display:false}}}}});
+        scales:{y:{title:{display:true,text:"%"},ticks:{callback:function(v){return v+'%';}}},x:{grid:{display:false}}}}});
 
     mk("ch-"+gid+"-gpTr",{type:"line",data:{labels:M,datasets:[
       {...lDS("Trial\u2192Paid %",g.gTr,C.green),fill:true,backgroundColor:C.green+"15"}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:false}},
-        scales:{y:{title:{display:true,text:"%"}},x:{grid:{display:false}}}}});
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:lastPtLabel('%')},
+        scales:{y:{title:{display:true,text:"%"},ticks:{callback:function(v){return v+'%';}}},x:{grid:{display:false}}}}});
 
     mk("ch-"+gid+"-gpRv",{type:"line",data:{labels:M,datasets:[aDS("GP Revenue",g.rSub,C.lime)]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:false}},
-        scales:{y:{title:{display:true,text:"$M"}},x:{grid:{display:false}}}}});
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:function(ctx){return ctx.dataIndex===ctx.dataset.data.length-1;},anchor:'end',align:'top',offset:4,color:C.lime,font:{weight:'bold',size:10},formatter:function(v){return '$'+Math.round(v)+'M';}}},
+        scales:{y:{title:{display:true,text:"$M"},ticks:{callback:function(v){return '$'+v;}}},x:{grid:{display:false}}}}});
 
     // GP Engagement Lift
     const gpLift=[42,44,46,48,50,52,54,58,56,55,54,55];
     const nonGpLift=[28,29,29,30,30,31,31,33,32,31,31,32];
     mk("ch-"+gid+"-gpLift",{type:"line",data:{labels:M,datasets:[
-      lDS("GP Users (min/day)",gpLift,C.lime),lDS("Non-GP Users (min/day)",nonGpLift,C.orange)]},
+      {...lDS("GP Users (min/day)",gpLift,C.lime),datalabels:lastPtLabel(' min',0)},{...lDS("Non-GP Users (min/day)",nonGpLift,C.orange),datalabels:lastPtLabel(' min',0)}]},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top"},datalabels:{display:false}},
         scales:{y:{title:{display:true,text:"Min/Day"}},x:{grid:{display:false}}}}});
   }
 
   // Retention curves
   mk("ch-"+gid+"-retC",{type:"line",data:{labels:M,datasets:[
-    lDS("D1",g.rD1,C.green),lDS("D7",g.rD7,C.blue),
-    lDS("D30",g.rD30,C.purple),lDS("D90",g.rD90,C.orange)]},
+    {...lDS("D1",g.rD1,C.green),datalabels:lastPtLabel('%')},{...lDS("D7",g.rD7,C.blue),datalabels:lastPtLabel('%')},
+    {...lDS("D30",g.rD30,C.purple),datalabels:lastPtLabel('%')},{...lDS("D90",g.rD90,C.orange),datalabels:lastPtLabel('%')}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top"},datalabels:{display:false}},
-      scales:{y:{title:{display:true,text:"%"},min:0,max:100},x:{grid:{display:false}}}}});
+      scales:{y:{title:{display:true,text:"%"},min:0,max:100,ticks:{callback:function(v){return v+'%';}}},x:{grid:{display:false}}}}});
 
   // Cohort retention
   mk("ch-"+gid+"-cohort",{type:"line",data:{labels:M,datasets:[
-    aDS("M1",g.cM1,C.green),aDS("M3",g.cM3,C.blue),aDS("M6",g.cM6,C.purple)]},
+    {...aDS("M1",g.cM1,C.green),datalabels:lastPtLabel('%')},{...aDS("M3",g.cM3,C.blue),datalabels:lastPtLabel('%')},{...aDS("M6",g.cM6,C.purple),datalabels:lastPtLabel('%')}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top"},datalabels:{display:false}},
-      scales:{y:{title:{display:true,text:"%"},min:0,max:100},x:{grid:{display:false}}}}});
+      scales:{y:{title:{display:true,text:"%"},min:0,max:100,ticks:{callback:function(v){return v+'%';}}},x:{grid:{display:false}}}}});
 
   // Churn Reasons (horizontal bar)
   mk("ch-"+gid+"-churnR",{type:"bar",data:{
@@ -1117,29 +1150,29 @@ function renderCharts(gid){
   const wbData=g.retTr.map((v,i)=>+(v*0.28+Math.random()*2).toFixed(1));
   mk("ch-"+gid+"-winback",{type:"line",data:{labels:M,datasets:[
     {...lDS("Win-Back %",wbData,C.green),fill:true,backgroundColor:C.green+"15"}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:false}},
-      scales:{y:{title:{display:true,text:"%"}},x:{grid:{display:false}}}}});
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:lastPtLabel('%')},
+      scales:{y:{title:{display:true,text:"%"},ticks:{callback:function(v){return v+'%';}}},x:{grid:{display:false}}}}});
 
   // Cloud adoption
   mk("ch-"+gid+"-clA",{type:"line",data:{labels:M,datasets:[
     {...lDS("Cloud %",g.clA,C.cyan),fill:true,backgroundColor:C.cyan+"15"}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:false}},
-      scales:{y:{title:{display:true,text:"%"}},x:{grid:{display:false}}}}});
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:lastPtLabel('%')},
+      scales:{y:{title:{display:true,text:"%"},ticks:{callback:function(v){return v+'%';}}},x:{grid:{display:false}}}}});
 
   // Console migration
   mk("ch-"+gid+"-conM",{type:"bar",data:{labels:M,datasets:[bDS("Series X|S %",g.conM,C.green)]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:false}},
-      scales:{y:{title:{display:true,text:"%"},min:0,max:100},x:{grid:{display:false}}}}});
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:barTopLabel('%')},
+      scales:{y:{title:{display:true,text:"%"},min:0,max:100,ticks:{callback:function(v){return v+'%';}}},x:{grid:{display:false}}}}});
 
   // Cross-platform users
   mk("ch-"+gid+"-cpN",{type:"line",data:{labels:M,datasets:[
     {...lDS("Multi-Platform %",g.cpN,C.purple),fill:true,backgroundColor:C.purple+"15"}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:false}},
-      scales:{y:{title:{display:true,text:"%"}},x:{grid:{display:false}}}}});
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:lastPtLabel('%')},
+      scales:{y:{title:{display:true,text:"%"},ticks:{callback:function(v){return v+'%';}}},x:{grid:{display:false}}}}});
 
   // Platform MAU Trend
   mk("ch-"+gid+"-platTrend",{type:"line",data:{labels:M,datasets:[
-    lDS("Console",g.mC,C.green),lDS("PC",g.mP,C.blue),lDS("Cloud",g.mCl,C.purple)]},
+    {...lDS("Console",g.mC,C.green),datalabels:lastPtLabel('M')},{...lDS("PC",g.mP,C.blue),datalabels:lastPtLabel('M')},{...lDS("Cloud",g.mCl,C.purple),datalabels:lastPtLabel('M')}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top"},datalabels:{display:false}},
       scales:{y:{title:{display:true,text:"MAU (M)"}},x:{grid:{display:false}}}}});
 
@@ -1147,7 +1180,7 @@ function renderCharts(gid){
   const latData=tr(52,38,12);
   mk("ch-"+gid+"-latency",{type:"line",data:{labels:M,datasets:[
     {...lDS("P95 Latency",latData,C.cyan),fill:true,backgroundColor:C.cyan+"12"}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:false},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:lastPtLabel('ms'),
       annotation:{annotations:{tgt:{type:"line",yMin:40,yMax:40,borderColor:C.gold+"60",borderDash:[6,4],borderWidth:1,
         label:{display:true,content:"Target: 40ms",position:"start",font:{size:9},color:C.gold}}}}},
       scales:{y:{title:{display:true,text:"ms"},reverse:true},x:{grid:{display:false}}}}});
