@@ -93,7 +93,7 @@ margin-top:5px;padding:1px 6px;border-radius:4px}
 .kt .kd.up{color:#3fb950;background:rgba(63,185,80,.1)}
 .kt .kd.dn{color:var(--red);background:rgba(232,17,35,.1)}
 .kt .ks{font-size:10px;color:var(--dim);margin-top:3px}
-.kt .sp{position:absolute;bottom:0;right:0;width:90px;height:40px;opacity:.4}
+.kt .sp{position:absolute;bottom:0;right:0;width:90px;height:40px;opacity:.6}
 .ii{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;
 border-radius:50%;background:rgba(255,255,255,.07);font-size:8px;color:var(--dim);
 cursor:help;position:relative;font-style:normal}
@@ -571,8 +571,8 @@ Chart.defaults.plugins.legend.labels.usePointStyle=true;
 Chart.defaults.plugins.legend.labels.pointStyleWidth=8;
 Chart.defaults.plugins.legend.labels.padding=12;
 Chart.defaults.plugins.legend.labels.font={size:10};
-Chart.defaults.elements.line.tension=.35;Chart.defaults.elements.line.borderWidth=2;
-Chart.defaults.elements.point.radius=2;Chart.defaults.elements.point.hoverRadius=5;
+Chart.defaults.elements.line.tension=.35;Chart.defaults.elements.line.borderWidth=2.5;
+Chart.defaults.elements.point.radius=3;Chart.defaults.elements.point.hoverRadius=6;
 Chart.defaults.scale.grid={color:"rgba(255,255,255,.05)",drawBorder:false};
 Chart.defaults.scale.ticks={padding:6,font:{size:9}};
 Chart.defaults.plugins.datalabels={display:false};
@@ -927,8 +927,8 @@ function mk(id,cfg){
   const ch=new Chart(cv.getContext("2d"),cfg);CI[id]=ch;return ch;
 }
 
-function aDS(l,d,c,f=true){return{label:l,data:d,borderColor:c,backgroundColor:f?c+"20":"transparent",fill:f?"origin":false,pointRadius:0,pointHoverRadius:4,borderWidth:2,tension:.35};}
-function lDS(l,d,c){return aDS(l,d,c,false);}
+function aDS(l,d,c,f=true){return{label:l,data:d,borderColor:c,backgroundColor:f?c+"40":"transparent",fill:f?"origin":false,borderWidth:2.5,tension:.35};}
+function lDS(l,d,c){return{label:l,data:d,borderColor:c,backgroundColor:"transparent",fill:false,borderWidth:2.5,tension:.35};}
 function bDS(l,d,c){return{label:l,data:d,backgroundColor:c,borderRadius:4,barPercentage:.7};}
 
 function lastPtLabel(suffix,decimals){
@@ -970,13 +970,14 @@ function renderCharts(gid){
   spD.forEach((d,i)=>{
     const el=document.getElementById("sp-"+gid+"-"+i);
     if(!el||!d||d.every(v=>v===0))return;
+    el.width=90;el.height=40;
     new Chart(el.getContext("2d"),{type:"line",data:{labels:M,datasets:[{data:d,borderColor:"#fff",borderWidth:1.5,pointRadius:0,tension:.4,fill:false}]},
       options:{responsive:false,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{enabled:false},datalabels:{display:false}},scales:{x:{display:false},y:{display:false}}}});
   });
 
   // MAU by Platform (stacked area)
   mk("ch-"+gid+"-mauPlat",{type:"line",data:{labels:M,datasets:[
-    aDS("Console",g.mC,C.green),aDS("PC",g.mP,C.blue),{...aDS("Cloud",g.mCl,C.purple),datalabels:lastPtLabel('M')}]},
+    {...aDS("Console",g.mC,C.green),datalabels:lastPtLabel('M')},{...aDS("PC",g.mP,C.blue),datalabels:lastPtLabel('M')},{...aDS("Cloud",g.mCl,C.purple),datalabels:lastPtLabel('M')}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top"},datalabels:{display:false}},
       scales:{y:{stacked:true,title:{display:true,text:"MAU (M)"}},x:{grid:{display:false}}}}});
 
@@ -1020,7 +1021,7 @@ function renderCharts(gid){
 
   // Stickiness (area with target line)
   mk("ch-"+gid+"-stk",{type:"line",data:{labels:M,datasets:[
-    {...lDS("DAU/MAU %",g.stkTr,C.cyan),fill:true,backgroundColor:C.cyan+"15"}]},
+    {...lDS("DAU/MAU %",g.stkTr,C.cyan),fill:true,backgroundColor:C.cyan+"35"}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:lastPtLabel('%'),
       annotation:{annotations:{tgt:{type:"line",yMin:45,yMax:45,borderColor:C.gold+"60",borderDash:[6,4],borderWidth:1,
         label:{display:true,content:"Target: 45%",position:"start",font:{size:9},color:C.gold}}}}},
@@ -1038,7 +1039,7 @@ function renderCharts(gid){
 
   // Cross-play %
   mk("ch-"+gid+"-cpPct",{type:"line",data:{labels:M,datasets:[
-    {...lDS("Cross-Play %",g.cp,C.teal),fill:true,backgroundColor:C.teal+"15"}]},
+    {...lDS("Cross-Play %",g.cp,C.teal),fill:true,backgroundColor:C.teal+"35"}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:lastPtLabel('%')},
       scales:{y:{title:{display:true,text:"%"},ticks:{callback:function(v){return v+'%';}}},x:{grid:{display:false}}}}});
 
@@ -1074,7 +1075,7 @@ function renderCharts(gid){
 
   // MTX Conversion
   mk("ch-"+gid+"-mtxC",{type:"line",data:{labels:M,datasets:[
-    {...lDS("Conv %",g.mtxC,C.orange),fill:true,backgroundColor:C.orange+"15"}]},
+    {...lDS("Conv %",g.mtxC,C.orange),fill:true,backgroundColor:C.orange+"35"}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:lastPtLabel('%')},
       scales:{y:{title:{display:true,text:"%"},ticks:{callback:function(v){return v+'%';}}},x:{grid:{display:false}}}}});
 
@@ -1101,14 +1102,14 @@ function renderCharts(gid){
         scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:"Subs (M)"}}}}});
 
     mk("ch-"+gid+"-gpCh",{type:"line",data:{labels:M,datasets:[
-      {...lDS("Churn %",g.gCh,C.red),fill:true,backgroundColor:C.red+"12"}]},
+      {...lDS("Churn %",g.gCh,C.red),fill:true,backgroundColor:C.red+"35"}]},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:lastPtLabel('%'),
         annotation:{annotations:{tgt:{type:"line",yMin:3.8,yMax:3.8,borderColor:C.gold+"60",borderDash:[6,4],borderWidth:1,
           label:{display:true,content:"Target: 3.8%",position:"start",font:{size:9},color:C.gold}}}}},
         scales:{y:{title:{display:true,text:"%"},ticks:{callback:function(v){return v+'%';}}},x:{grid:{display:false}}}}});
 
     mk("ch-"+gid+"-gpTr",{type:"line",data:{labels:M,datasets:[
-      {...lDS("Trial\u2192Paid %",g.gTr,C.green),fill:true,backgroundColor:C.green+"15"}]},
+      {...lDS("Trial\u2192Paid %",g.gTr,C.green),fill:true,backgroundColor:C.green+"35"}]},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:lastPtLabel('%')},
         scales:{y:{title:{display:true,text:"%"},ticks:{callback:function(v){return v+'%';}}},x:{grid:{display:false}}}}});
 
@@ -1149,13 +1150,13 @@ function renderCharts(gid){
   // Win-back Rate
   const wbData=g.retTr.map((v,i)=>+(v*0.28+Math.random()*2).toFixed(1));
   mk("ch-"+gid+"-winback",{type:"line",data:{labels:M,datasets:[
-    {...lDS("Win-Back %",wbData,C.green),fill:true,backgroundColor:C.green+"15"}]},
+    {...lDS("Win-Back %",wbData,C.green),fill:true,backgroundColor:C.green+"35"}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:lastPtLabel('%')},
       scales:{y:{title:{display:true,text:"%"},ticks:{callback:function(v){return v+'%';}}},x:{grid:{display:false}}}}});
 
   // Cloud adoption
   mk("ch-"+gid+"-clA",{type:"line",data:{labels:M,datasets:[
-    {...lDS("Cloud %",g.clA,C.cyan),fill:true,backgroundColor:C.cyan+"15"}]},
+    {...lDS("Cloud %",g.clA,C.cyan),fill:true,backgroundColor:C.cyan+"35"}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:lastPtLabel('%')},
       scales:{y:{title:{display:true,text:"%"},ticks:{callback:function(v){return v+'%';}}},x:{grid:{display:false}}}}});
 
@@ -1166,7 +1167,7 @@ function renderCharts(gid){
 
   // Cross-platform users
   mk("ch-"+gid+"-cpN",{type:"line",data:{labels:M,datasets:[
-    {...lDS("Multi-Platform %",g.cpN,C.purple),fill:true,backgroundColor:C.purple+"15"}]},
+    {...lDS("Multi-Platform %",g.cpN,C.purple),fill:true,backgroundColor:C.purple+"35"}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:lastPtLabel('%')},
       scales:{y:{title:{display:true,text:"%"},ticks:{callback:function(v){return v+'%';}}},x:{grid:{display:false}}}}});
 
@@ -1179,7 +1180,7 @@ function renderCharts(gid){
   // xCloud Latency
   const latData=tr(52,38,12);
   mk("ch-"+gid+"-latency",{type:"line",data:{labels:M,datasets:[
-    {...lDS("P95 Latency",latData,C.cyan),fill:true,backgroundColor:C.cyan+"12"}]},
+    {...lDS("P95 Latency",latData,C.cyan),fill:true,backgroundColor:C.cyan+"35"}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:lastPtLabel('ms'),
       annotation:{annotations:{tgt:{type:"line",yMin:40,yMax:40,borderColor:C.gold+"60",borderDash:[6,4],borderWidth:1,
         label:{display:true,content:"Target: 40ms",position:"start",font:{size:9},color:C.gold}}}}},
