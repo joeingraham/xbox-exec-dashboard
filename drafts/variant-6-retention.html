@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Xbox Executive Dashboard — Retention &amp; Churn</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#0D1117;--card:#161B22;--border:#21262D;--text:#E6EDF3;--text-dim:#8B949E;
+--green:#107C10;--green2:#10893E;--lime:#7FBA00;--blue:#0078D4;--purple:#7B68EE;
+--orange:#FF8C00;--red:#E81123;--gold:#FFB900;--teal:#00B7C3;
+}
+html{font-size:14px}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+a{color:var(--blue);text-decoration:none}
+
+/* Header */
+.header{position:fixed;top:0;left:0;right:0;height:56px;background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;z-index:100;gap:16px}
+.header .logo{font-size:1.3rem;font-weight:800;color:var(--green);letter-spacing:-0.5px}
+.header .logo span{color:var(--text)}
+.header .variant-badge{background:var(--purple);color:#fff;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.5px}
+.header .date-range{margin-left:auto;color:var(--text-dim);font-size:.8rem}
+
+/* Sidebar */
+.sidebar{position:fixed;top:56px;left:0;bottom:0;width:200px;background:var(--card);border-right:1px solid var(--border);overflow-y:auto;z-index:90;padding:12px 0}
+.sidebar .nav-section{padding:8px 16px;font-size:.65rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-top:8px}
+.sidebar .nav-item{display:flex;align-items:center;padding:8px 16px;cursor:pointer;color:var(--text-dim);font-size:.82rem;font-weight:500;transition:all .15s;border-left:3px solid transparent;gap:8px}
+.sidebar .nav-item:hover{color:var(--text);background:rgba(255,255,255,.04)}
+.sidebar .nav-item.active{color:var(--green);border-left-color:var(--green);background:rgba(16,124,16,.08)}
+.sidebar .nav-item .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* Main */
+.main{margin-left:200px;margin-top:56px;padding:24px;min-height:calc(100vh - 56px)}
+
+/* Sub-nav tabs */
+.section-tabs{display:flex;gap:4px;margin-bottom:20px;flex-wrap:wrap}
+.section-tab{padding:6px 16px;border-radius:6px;font-size:.78rem;font-weight:600;cursor:pointer;background:var(--card);border:1px solid var(--border);color:var(--text-dim);transition:all .15s}
+.section-tab:hover{color:var(--text);border-color:var(--text-dim)}
+.section-tab.active{background:var(--green);border-color:var(--green);color:#fff}
+
+/* KPI row */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:20px}
+.kpi-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;position:relative;overflow:hidden}
+.kpi-card .kpi-label{font-size:.7rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.kpi-card .kpi-value{font-size:1.6rem;font-weight:800;letter-spacing:-1px}
+.kpi-card .kpi-delta{font-size:.72rem;font-weight:600;margin-top:4px}
+.kpi-card .kpi-delta.up{color:var(--green)}
+.kpi-card .kpi-delta.down{color:var(--red)}
+.kpi-card .kpi-sparkline{position:absolute;bottom:0;right:0;width:80px;height:36px;opacity:.3}
+.kpi-card::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:10px 10px 0 0}
+.kpi-card.green::after{background:var(--green)}
+.kpi-card.blue::after{background:var(--blue)}
+.kpi-card.purple::after{background:var(--purple)}
+.kpi-card.orange::after{background:var(--orange)}
+.kpi-card.red::after{background:var(--red)}
+.kpi-card.gold::after{background:var(--gold)}
+.kpi-card.lime::after{background:var(--lime)}
+.kpi-card.teal::after{background:var(--teal)}
+
+/* Chart grid */
+.chart-grid{display:grid;gap:16px;margin-bottom:20px}
+.chart-grid.cols-2{grid-template-columns:repeat(2,1fr)}
+.chart-grid.cols-3{grid-template-columns:repeat(3,1fr)}
+.chart-grid.cols-1{grid-template-columns:1fr}
+@media(max-width:1200px){.chart-grid.cols-3{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:900px){.chart-grid.cols-2,.chart-grid.cols-3{grid-template-columns:1fr}.sidebar{display:none}.main{margin-left:0}}
+
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;min-height:320px;display:flex;flex-direction:column}
+.chart-card.tall{min-height:400px}
+.chart-card .chart-title{font-size:.85rem;font-weight:700;margin-bottom:4px}
+.chart-card .chart-subtitle{font-size:.7rem;color:var(--text-dim);margin-bottom:12px}
+.chart-card .chart-wrap{flex:1;position:relative;min-height:0}
+.chart-card .chart-wrap canvas{width:100%!important;height:100%!important}
+
+/* Section header */
+.section-header{font-size:1.1rem;font-weight:800;margin:28px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.section-header .icon{font-size:1.2rem}
+.section-header:first-child{margin-top:0}
+
+/* Table */
+.data-table{width:100%;border-collapse:collapse;font-size:.78rem}
+.data-table th{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text-dim);font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.5px}
+.data-table td{padding:8px 10px;border-bottom:1px solid var(--border)}
+.data-table tr:hover td{background:rgba(255,255,255,.02)}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.68rem;font-weight:600}
+.badge.danger{background:rgba(232,17,35,.15);color:var(--red)}
+.badge.warning{background:rgba(255,185,0,.15);color:var(--gold)}
+.badge.ok{background:rgba(16,124,16,.15);color:var(--green)}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text-dim)}
+
+.tab-content{display:none}
+.tab-content.active{display:block}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="logo">XBOX <span>Executive Dashboard</span></div>
+  <div class="variant-badge">V6 — Retention &amp; Churn</div>
+  <div class="date-range">May 2025 — Apr 2026 · Updated Apr 30, 2026</div>
+</div>
+
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="nav-section">Sections</div>
+  <div class="nav-item active" data-section="retention" onclick="showSection('retention')"><div class="dot" style="background:var(--green)"></div>Retention &amp; Churn</div>
+  <div class="nav-item" data-section="growth" onclick="showSection('growth')"><div class="dot" style="background:var(--blue)"></div>Growth</div>
+  <div class="nav-item" data-section="engagement" onclick="showSection('engagement')"><div class="dot" style="background:var(--purple)"></div>Engagement</div>
+  <div class="nav-item" data-section="monetization" onclick="showSection('monetization')"><div class="dot" style="background:var(--gold)"></div>Monetization</div>
+  <div class="nav-section" style="margin-top:20px">Game Tabs</div>
+  <div class="nav-item" data-game="total" onclick="switchGame('total')"><div class="dot" style="background:var(--green)"></div>Total Xbox</div>
+  <div class="nav-item" data-game="gamepass" onclick="switchGame('gamepass')"><div class="dot" style="background:var(--lime)"></div>Game Pass</div>
+  <div class="nav-item" data-game="halo" onclick="switchGame('halo')"><div class="dot" style="background:var(--blue)"></div>Halo</div>
+  <div class="nav-item" data-game="forza" onclick="switchGame('forza')"><div class="dot" style="background:var(--orange)"></div>Forza</div>
+  <div class="nav-item" data-game="cod" onclick="switchGame('cod')"><div class="dot" style="background:var(--red)"></div>Call of Duty</div>
+  <div class="nav-item" data-game="minecraft" onclick="switchGame('minecraft')"><div class="dot" style="background:var(--green2)"></div>Minecraft</div>
+  <div class="nav-item" data-game="sot" onclick="switchGame('sot')"><div class="dot" style="background:var(--teal)"></div>Sea of Thieves</div>
+  <div class="nav-item" data-game="starfield" onclick="switchGame('starfield')"><div class="dot" style="background:var(--purple)"></div>Starfield</div>
+</div>
+
+<!-- Main -->
+<div class="main" id="mainContent"></div>
+
+<script>
+// ── Global state ──
+let currentGame = 'total';
+let currentSection = 'retention';
+const charts = {};
+
+const MONTHS = ['May 25','Jun 25','Jul 25','Aug 25','Sep 25','Oct 25','Nov 25','Dec 25','Jan 26','Feb 26','Mar 26','Apr 26'];
+const COLORS = {green:'#107C10',green2:'#10893E',lime:'#7FBA00',blue:'#0078D4',purple:'#7B68EE',orange:'#FF8C00',red:'#E81123',gold:'#FFB900',teal:'#00B7C3',pink:'#FF69B4'};
+const COHORT_COLORS = [COLORS.green, COLORS.blue, COLORS.purple, COLORS.orange, COLORS.gold, COLORS.teal];
+
+// ── Chart defaults ──
+Chart.defaults.color = '#8B949E';
+Chart.defaults.borderColor = '#21262D';
+Chart.defaults.font.family = 'Inter, system-ui, sans-serif';
+Chart.defaults.font.size = 11;
+Chart.defaults.plugins.legend.labels.usePointStyle = true;
+Chart.defaults.plugins.legend.labels.pointStyleWidth = 8;
+Chart.defaults.plugins.legend.labels.padding = 12;
+Chart.defaults.plugins.tooltip.backgroundColor = '#1C2128';
+Chart.defaults.plugins.tooltip.borderColor = '#21262D';
+Chart.defaults.plugins.tooltip.borderWidth = 1;
+Chart.defaults.plugins.tooltip.cornerRadius = 8;
+Chart.defaults.plugins.tooltip.padding = 10;
+Chart.defaults.elements.point.radius = 2;
+Chart.defaults.elements.point.hoverRadius = 5;
+Chart.defaults.elements.line.tension = 0.3;
+Chart.defaults.plugins.datalabels = { display: false };
+
+// ── Data generators ──
+function lerp(a,b,t){return a+(b-a)*t}
+function rand(min,max){return Math.random()*(max-min)+min}
+function trend(base,growth,noise,n){const r=[];for(let i=0;i<n;i++)r.push(+(base+growth*i+rand(-noise,noise)).toFixed(1));return r}
+function fmtNum(n){if(n>=1e9)return(n/1e9).toFixed(1)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return n.toFixed?n.toFixed(0):n}
+function fmtPct(n){return n.toFixed(1)+'%'}
+
+// Per-game data profiles
+const GAME_PROFILES = {
+  total:    {label:'Total Xbox', color:COLORS.green,  mau:[120,122,128,135,131,127,133,142,138,134,140,148], d1:52,d7:38,d30:24, churnBase:4.2, revenueBase:2.1, returnRate:34, resurrectBase:2.8},
+  gamepass: {label:'Game Pass',  color:COLORS.lime,   mau:[34,35,36.5,38,37,36.5,38,41,40,39,40.5,43],       d1:61,d7:45,d30:31, churnBase:3.1, revenueBase:0.8, returnRate:42, resurrectBase:3.5},
+  halo:    {label:'Halo',       color:COLORS.blue,   mau:[8.5,8.2,9.1,9.8,8.9,8.1,7.8,8.5,8.2,7.9,8.8,9.2], d1:48,d7:33,d30:19, churnBase:5.8, revenueBase:0.12, returnRate:28, resurrectBase:2.1},
+  forza:   {label:'Forza',      color:COLORS.orange, mau:[11,11.5,12,13.2,12.5,11.8,12.2,13.8,13,12.5,13.5,14.2], d1:55,d7:40,d30:26, churnBase:4.0, revenueBase:0.18, returnRate:36, resurrectBase:3.0},
+  cod:     {label:'Call of Duty',color:COLORS.red,    mau:[42,41,43,48,45,42,44,52,49,46,47,51],               d1:58,d7:42,d30:28, churnBase:3.8, revenueBase:0.65, returnRate:38, resurrectBase:3.2},
+  minecraft:{label:'Minecraft', color:COLORS.green2, mau:[28,29,31,35,33,30,32,36,34,32,34,37],               d1:64,d7:48,d30:35, churnBase:2.5, revenueBase:0.32, returnRate:45, resurrectBase:4.1},
+  sot:     {label:'Sea of Thieves',color:COLORS.teal,mau:[5.2,5.0,5.5,6.1,5.8,5.3,5.1,5.6,5.4,5.1,5.8,6.3], d1:50,d7:35,d30:21, churnBase:5.2, revenueBase:0.08, returnRate:30, resurrectBase:2.4},
+  starfield:{label:'Starfield', color:COLORS.purple, mau:[6.8,6.2,5.8,5.5,5.2,5.0,5.4,6.5,6.1,5.7,6.2,7.0], d1:45,d7:30,d30:17, churnBase:6.5, revenueBase:0.11, returnRate:25, resurrectBase:1.8}
+};
+
+function getGameData(game) {
+  const p = GAME_PROFILES[game];
+  const scale = game === 'total' ? 1e6 : (game === 'cod' ? 1e6 : game === 'gamepass' ? 1e6 : game === 'minecraft' ? 1e6 : 1e6);
+
+  // J-curve retention data (6 cohorts)
+  const cohortLabels = ['Nov 25','Dec 25','Jan 26','Feb 26','Mar 26','Apr 26'];
+  const jCurves = cohortLabels.map((_, ci) => {
+    const months = 6 - ci;
+    const curve = [100];
+    for (let m = 1; m < months; m++) {
+      const prev = curve[m-1];
+      const drop = m === 1 ? rand(35,48) : m === 2 ? rand(8,15) : m === 3 ? rand(4,8) : rand(2,5);
+      curve.push(+(prev - drop + rand(-1,1)).toFixed(1));
+    }
+    return curve;
+  });
+
+  // Revenue retention (can exceed 100% via expansion)
+  const revRetention = cohortLabels.map((_, ci) => {
+    const months = 6 - ci;
+    const curve = [100];
+    for (let m = 1; m < months; m++) {
+      const prev = curve[m-1];
+      const change = m === 1 ? rand(-20, -10) : rand(-3, 8);
+      curve.push(+(prev + change).toFixed(1));
+    }
+    return curve;
+  });
+
+  // D1/D7/D30 over time
+  const d1 = trend(p.d1, 0.3, 1.5, 12);
+  const d7 = trend(p.d7, 0.25, 1.2, 12);
+  const d30 = trend(p.d30, 0.2, 1.0, 12);
+
+  // Churn by segment
+  const churnCasual = trend(p.churnBase + 3, -0.1, 0.4, 12);
+  const churnCore = trend(p.churnBase, -0.08, 0.3, 12);
+  const churnHardcore = trend(p.churnBase - 1.5, -0.05, 0.2, 12);
+
+  // Return rate
+  const returnRates = trend(p.returnRate, 0.4, 1.0, 12);
+
+  // Resurrection rate
+  const resurrectRates = trend(p.resurrectBase, 0.08, 0.3, 12);
+
+  // Churn reasons
+  const churnReasons = {
+    labels: ['Found other game','Boredom / content drought','Price too high','Technical issues','Not enough friends playing','Life circumstances','Poor matchmaking','Lack of new content'],
+    data: [28, 22, 15, 12, 9, 7, 4, 3].map(v => +(v + rand(-2,2)).toFixed(1))
+  };
+
+  // Time-to-churn distribution
+  const timeToChurn = {
+    labels: ['< 1 week','1-2 weeks','2-4 weeks','1-2 months','2-3 months','3-6 months','6-12 months','> 12 months'],
+    data: [18, 15, 14, 16, 12, 11, 8, 6].map(v => +(v + rand(-1,1)).toFixed(1))
+  };
+
+  // Retention by acquisition source
+  const acqSources = {
+    labels: ['Game Pass Trial','Organic / Direct','Paid Marketing','Friend Referral','Bundle / Promo'],
+    d30: [p.d30 + 5, p.d30, p.d30 - 4, p.d30 + 8, p.d30 - 2].map(v => +(v + rand(-1,1)).toFixed(1)),
+    d90: [p.d30 - 5, p.d30 - 8, p.d30 - 14, p.d30 - 2, p.d30 - 11].map(v => +(v + rand(-1,1)).toFixed(1))
+  };
+
+  // Cohort revenue over time (stacked area - 6 cohorts)
+  const cohortRevenue = [];
+  for (let c = 0; c < 6; c++) {
+    const startMonth = 6 + c;
+    const data = new Array(12).fill(null);
+    const baseRev = (p.revenueBase / 6) * (1 + rand(-0.1, 0.1));
+    for (let m = startMonth; m < 12; m++) {
+      const age = m - startMonth;
+      const decay = Math.max(0.3, 1 - age * 0.08 + rand(-0.02, 0.02));
+      data[m] = +(baseRev * decay * 1e9 / 12).toFixed(0);
+    }
+    cohortRevenue.push(data);
+  }
+
+  // At-risk users
+  const atRiskUsers = [
+    { segment: 'Lapsed 14+ days', count: Math.round(p.mau[11] * scale * 0.08), trend: '+12%', risk: 'High' },
+    { segment: 'Declining session time', count: Math.round(p.mau[11] * scale * 0.05), trend: '+8%', risk: 'High' },
+    { segment: 'Reduced spending', count: Math.round(p.mau[11] * scale * 0.04), trend: '+3%', risk: 'Medium' },
+    { segment: 'Social disconnect', count: Math.round(p.mau[11] * scale * 0.03), trend: '-2%', risk: 'Medium' },
+    { segment: 'Platform switching', count: Math.round(p.mau[11] * scale * 0.02), trend: '+5%', risk: 'Low' }
+  ];
+
+  // Win-back campaigns
+  const winBack = [
+    { campaign: 'Game Pass Re-sub Email', sent: '2.4M', reactivated: '312K', rate: 13.0, revenue: '$4.7M', roi: '3.2x' },
+    { campaign: 'Season Launch Push', sent: '1.8M', reactivated: '198K', rate: 11.0, revenue: '$2.1M', roi: '2.8x' },
+    { campaign: 'Friend Invite Bonus', sent: '950K', reactivated: '142K', rate: 14.9, revenue: '$1.8M', roi: '4.1x' },
+    { campaign: 'Price Drop Alert', sent: '1.2M', reactivated: '108K', rate: 9.0, revenue: '$1.4M', roi: '2.5x' },
+    { campaign: 'Win-Back Bundle', sent: '680K', reactivated: '88K', rate: 12.9, revenue: '$2.3M', roi: '3.8x' },
+    { campaign: 'Lapsed Hardcore Email', sent: '420K', reactivated: '71K', rate: 16.9, revenue: '$1.9M', roi: '4.5x' }
+  ];
+
+  return { p, jCurves, revRetention, cohortLabels, d1, d7, d30, churnCasual, churnCore, churnHardcore,
+           returnRates, resurrectRates, churnReasons, timeToChurn, acqSources, cohortRevenue,
+           atRiskUsers, winBack };
+}
+
+// ── Render ──
+function render() {
+  Object.values(charts).forEach(c => c.destroy());
+  for (const k in charts) delete charts[k];
+  document.getElementById('mainContent').innerHTML = buildHTML();
+  requestAnimationFrame(() => buildCharts());
+}
+
+function buildHTML() {
+  const d = getGameData(currentGame);
+  const p = d.p;
+  const lastMAU = p.mau[11];
+  const prevMAU = p.mau[10];
+  const mauDelta = ((lastMAU - prevMAU) / prevMAU * 100).toFixed(1);
+
+  let html = '';
+
+  // Game tabs
+  html += `<div class="section-tabs">`;
+  ['total','gamepass','halo','forza','cod','minecraft','sot','starfield'].forEach(g => {
+    const gp = GAME_PROFILES[g];
+    html += `<div class="section-tab ${g===currentGame?'active':''}" onclick="switchGame('${g}')">${gp.label}</div>`;
+  });
+  html += `</div>`;
+
+  // ─── RETENTION SECTION ───
+  html += `<div class="tab-content ${currentSection==='retention'?'active':''}" id="sec-retention">`;
+  html += `<div class="section-header"><span class="icon">🔄</span> Retention &amp; Churn — ${p.label}</div>`;
+
+  // KPIs
+  html += `<div class="kpi-row">`;
+  html += kpi('D1 Retention', fmtPct(d.d1[11]), `${(d.d1[11]-d.d1[0]).toFixed(1)}pp YTD`, d.d1[11]>d.d1[0]?'up':'down', 'green');
+  html += kpi('D7 Retention', fmtPct(d.d7[11]), `${(d.d7[11]-d.d7[0]).toFixed(1)}pp YTD`, d.d7[11]>d.d7[0]?'up':'down', 'blue');
+  html += kpi('D30 Retention', fmtPct(d.d30[11]), `${(d.d30[11]-d.d30[0]).toFixed(1)}pp YTD`, d.d30[11]>d.d30[0]?'up':'down', 'purple');
+  html += kpi('Monthly Churn', fmtPct(d.churnCore[11]), `${(d.churnCore[11]-d.churnCore[0]).toFixed(1)}pp`, d.churnCore[11]<d.churnCore[0]?'up':'down', 'red');
+  html += kpi('Return Rate', fmtPct(d.returnRates[11]), `${(d.returnRates[11]-d.returnRates[0]).toFixed(1)}pp`, d.returnRates[11]>d.returnRates[0]?'up':'down', 'gold');
+  html += kpi('Resurrection', fmtPct(d.resurrectRates[11]), `${(d.resurrectRates[11]-d.resurrectRates[0]).toFixed(1)}pp`, d.resurrectRates[11]>d.resurrectRates[0]?'up':'down', 'teal');
+  html += `</div>`;
+
+  // Row 1: J-Curves + Revenue Retention
+  html += `<div class="chart-grid cols-2">`;
+  html += chartCard('jcurves', 'User Retention J-Curves by Monthly Cohort', 'Classic retention curves — % of cohort still active after N months');
+  html += chartCard('revretention', 'Revenue Retention by Cohort', 'Net revenue retention — can exceed 100% with expansion revenue');
+  html += `</div>`;
+
+  // Row 2: D1/D7/D30 + Churn by Segment
+  html += `<div class="chart-grid cols-2">`;
+  html += chartCard('d1d7d30', 'D1/D7/D30 Retention Milestones Over Time', 'Are early retention metrics improving month-over-month?');
+  html += chartCard('churnSegment', 'Churn Rate by Segment', 'Monthly churn % — Casual vs Core vs Hardcore players');
+  html += `</div>`;
+
+  // Row 3: Return Rate + Resurrection Rate
+  html += `<div class="chart-grid cols-2">`;
+  html += chartCard('returnRate', 'Return Rate', '% of ever-activated users who are currently active');
+  html += chartCard('resurrection', 'Resurrection Rate', 'Previously churned users returning per month (%)');
+  html += `</div>`;
+
+  // Row 4: Churn Reasons + Time-to-Churn
+  html += `<div class="chart-grid cols-2">`;
+  html += chartCard('churnReasons', 'Churn Reasons', 'Self-reported and inferred reasons for player churn', 'tall');
+  html += chartCard('timeToChurn', 'Time-to-Churn Distribution', 'How long do users play before churning?');
+  html += `</div>`;
+
+  // Row 5: Retention by Acquisition Source + Cohort Revenue
+  html += `<div class="chart-grid cols-2">`;
+  html += chartCard('acqRetention', 'Retention by Acquisition Source', 'D30 & D90 retention split by how users were acquired');
+  html += chartCard('cohortRevenue', 'Cohort Revenue Over Time', 'Stacked area — each monthly cohort\'s contribution to revenue');
+  html += `</div>`;
+
+  // Row 6: At-Risk Users table
+  html += `<div class="chart-grid cols-1">`;
+  html += `<div class="chart-card"><div class="chart-title">⚠️ At-Risk Users — Early Warning Segments</div>
+    <div class="chart-subtitle">Users showing declining engagement patterns</div>
+    <table class="data-table"><thead><tr><th>Segment</th><th>Users</th><th>MoM Trend</th><th>Risk Level</th></tr></thead><tbody>`;
+  d.atRiskUsers.forEach(r => {
+    const badge = r.risk === 'High' ? 'danger' : r.risk === 'Medium' ? 'warning' : 'ok';
+    html += `<tr><td>${r.segment}</td><td>${fmtNum(r.count)}</td><td>${r.trend}</td><td><span class="badge ${badge}">${r.risk}</span></td></tr>`;
+  });
+  html += `</tbody></table></div>`;
+  html += `</div>`;
+
+  // Row 7: Win-Back Campaign table
+  html += `<div class="chart-grid cols-1">`;
+  html += `<div class="chart-card"><div class="chart-title">🎯 Win-Back Campaign Performance</div>
+    <div class="chart-subtitle">Reactivation rates from email, push, and promotional campaigns</div>
+    <table class="data-table"><thead><tr><th>Campaign</th><th>Sent</th><th>Reactivated</th><th>Rate</th><th>Revenue</th><th>ROI</th></tr></thead><tbody>`;
+  d.winBack.forEach(w => {
+    const badge = w.rate >= 14 ? 'ok' : w.rate >= 10 ? 'warning' : 'danger';
+    html += `<tr><td>${w.campaign}</td><td>${w.sent}</td><td>${w.reactivated}</td><td><span class="badge ${badge}">${w.rate.toFixed(1)}%</span></td><td>${w.revenue}</td><td>${w.roi}</td></tr>`;
+  });
+  html += `</tbody></table></div>`;
+  html += `</div>`;
+
+  html += `</div>`; // end retention
+
+  // ─── GROWTH SECTION ───
+  html += `<div class="tab-content ${currentSection==='growth'?'active':''}" id="sec-growth">`;
+  html += `<div class="section-header"><span class="icon">📈</span> Growth — ${p.label}</div>`;
+  html += `<div class="kpi-row">`;
+  html += kpi('MAU', fmtNum(lastMAU * 1e6), `${mauDelta > 0 ? '+' : ''}${mauDelta}% MoM`, mauDelta > 0 ? 'up' : 'down', 'green');
+  html += kpi('New Users (Apr)', fmtNum(lastMAU * 1e6 * 0.08), '+6.2% MoM', 'up', 'blue');
+  html += kpi('DAU/MAU Ratio', '32.4%', '+1.1pp', 'up', 'purple');
+  html += `</div>`;
+  html += `<div class="chart-grid cols-2">`;
+  html += chartCard('growthMAU', 'Monthly Active Users', '12-month MAU trend');
+  html += chartCard('growthNew', 'New vs Returning Users', 'Monthly new user acquisition vs returning');
+  html += `</div></div>`;
+
+  // ─── ENGAGEMENT SECTION ───
+  html += `<div class="tab-content ${currentSection==='engagement'?'active':''}" id="sec-engagement">`;
+  html += `<div class="section-header"><span class="icon">🎮</span> Engagement — ${p.label}</div>`;
+  html += `<div class="kpi-row">`;
+  html += kpi('Avg Session', '47 min', '+3 min MoM', 'up', 'green');
+  html += kpi('Sessions/User', '4.2/wk', '+0.3', 'up', 'blue');
+  html += kpi('DAU', fmtNum(lastMAU * 1e6 * 0.32), '+2.1%', 'up', 'purple');
+  html += `</div>`;
+  html += `<div class="chart-grid cols-2">`;
+  html += chartCard('engSession', 'Avg Session Duration', 'Minutes per session over time');
+  html += chartCard('engDAU', 'DAU Trend', 'Daily active users by month');
+  html += `</div></div>`;
+
+  // ─── MONETIZATION SECTION ───
+  html += `<div class="tab-content ${currentSection==='monetization'?'active':''}" id="sec-monetization">`;
+  html += `<div class="section-header"><span class="icon">💰</span> Monetization — ${p.label}</div>`;
+  html += `<div class="kpi-row">`;
+  html += kpi('Revenue (Apr)', '$' + fmtNum(p.revenueBase * 1e9 / 12), '+4.8% MoM', 'up', 'green');
+  html += kpi('ARPU', '$' + (p.revenueBase * 1000 / lastMAU / 12).toFixed(2), '+$0.12', 'up', 'gold');
+  html += kpi('Conversion', '6.8%', '+0.4pp', 'up', 'purple');
+  html += `</div>`;
+  html += `<div class="chart-grid cols-2">`;
+  html += chartCard('monRevenue', 'Monthly Revenue', 'Revenue trend across the period');
+  html += chartCard('monARPU', 'ARPU Trend', 'Average revenue per user');
+  html += `</div></div>`;
+
+  return html;
+}
+
+function kpi(label, value, delta, direction, color) {
+  return `<div class="kpi-card ${color}"><div class="kpi-label">${label}</div><div class="kpi-value">${value}</div><div class="kpi-delta ${direction}">${direction==='up'?'▲':'▼'} ${delta}</div></div>`;
+}
+
+function chartCard(id, title, subtitle, extra='') {
+  return `<div class="chart-card ${extra}"><div class="chart-title">${title}</div><div class="chart-subtitle">${subtitle}</div><div class="chart-wrap"><canvas id="chart-${id}"></canvas></div></div>`;
+}
+
+function makeChart(id, config) {
+  const el = document.getElementById('chart-' + id);
+  if (!el) return;
+  charts[id] = new Chart(el, config);
+}
+
+function lineDataset(label, data, color, opts={}) {
+  return { label, data, borderColor: color, backgroundColor: color + '18', fill: opts.fill || false, borderWidth: 2, pointRadius: 2, pointHoverRadius: 5, ...opts };
+}
+function barDataset(label, data, color, opts={}) {
+  return { label, data, backgroundColor: color + 'CC', borderColor: color, borderWidth: 1, borderRadius: 4, ...opts };
+}
+
+function buildCharts() {
+  const d = getGameData(currentGame);
+  const p = d.p;
+
+  // Only build charts for current section
+  if (currentSection === 'retention') buildRetentionCharts(d, p);
+  else if (currentSection === 'growth') buildGrowthCharts(d, p);
+  else if (currentSection === 'engagement') buildEngagementCharts(d, p);
+  else if (currentSection === 'monetization') buildMonetizationCharts(d, p);
+}
+
+function buildRetentionCharts(d, p) {
+  // 1. J-Curves
+  const jLabels = ['M0','M1','M2','M3','M4','M5'];
+  const jDatasets = d.cohortLabels.map((cl, i) => lineDataset(cl, d.jCurves[i], COHORT_COLORS[i], { borderWidth: 2.5 }));
+  makeChart('jcurves', {
+    type: 'line',
+    data: { labels: jLabels, datasets: jDatasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        y: { beginAtZero: true, max: 100, grid: { color: '#21262D44' },
+          ticks: { callback: v => v + '%' }
+        },
+        x: { grid: { display: false } }
+      },
+      plugins: {
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y}%` } },
+        annotation: {
+          annotations: {
+            line30: { type: 'line', yMin: 30, yMax: 30, borderColor: COLORS.gold + '60', borderDash: [5,5], borderWidth: 1,
+              label: { display: true, content: '30% benchmark', position: 'start', color: COLORS.gold, font: { size: 10 }, backgroundColor: 'transparent' }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // 2. Revenue Retention
+  const rrDatasets = d.cohortLabels.map((cl, i) => lineDataset(cl, d.revRetention[i], COHORT_COLORS[i], { borderWidth: 2.5 }));
+  makeChart('revretention', {
+    type: 'line',
+    data: { labels: jLabels, datasets: rrDatasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        y: { min: 50, max: 130, grid: { color: '#21262D44' }, ticks: { callback: v => v + '%' } },
+        x: { grid: { display: false } }
+      },
+      plugins: {
+        annotation: {
+          annotations: {
+            line100: { type: 'line', yMin: 100, yMax: 100, borderColor: COLORS.green + '80', borderDash: [5,5], borderWidth: 1.5,
+              label: { display: true, content: '100% — breakeven', position: 'start', color: COLORS.green, font: { size: 10 }, backgroundColor: 'transparent' }
+            }
+          }
+        },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y}%` } }
+      }
+    }
+  });
+
+  // 3. D1/D7/D30
+  makeChart('d1d7d30', {
+    type: 'line',
+    data: {
+      labels: MONTHS,
+      datasets: [
+        lineDataset('D1 Retention', d.d1, COLORS.green, { fill: true, backgroundColor: COLORS.green + '15' }),
+        lineDataset('D7 Retention', d.d7, COLORS.blue, { fill: true, backgroundColor: COLORS.blue + '15' }),
+        lineDataset('D30 Retention', d.d30, COLORS.purple, { fill: true, backgroundColor: COLORS.purple + '15' })
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        y: { beginAtZero: false, grid: { color: '#21262D44' }, ticks: { callback: v => v + '%' } },
+        x: { grid: { display: false } }
+      },
+      plugins: { tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}%` } } }
+    }
+  });
+
+  // 4. Churn by Segment
+  makeChart('churnSegment', {
+    type: 'line',
+    data: {
+      labels: MONTHS,
+      datasets: [
+        lineDataset('Casual', d.churnCasual, COLORS.orange, { borderWidth: 2.5 }),
+        lineDataset('Core', d.churnCore, COLORS.blue, { borderWidth: 2.5 }),
+        lineDataset('Hardcore', d.churnHardcore, COLORS.purple, { borderWidth: 2.5 })
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        y: { beginAtZero: true, grid: { color: '#21262D44' }, ticks: { callback: v => v + '%' } },
+        x: { grid: { display: false } }
+      },
+      plugins: { tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}%` } } }
+    }
+  });
+
+  // 5. Return Rate
+  makeChart('returnRate', {
+    type: 'bar',
+    data: {
+      labels: MONTHS,
+      datasets: [barDataset('Return Rate', d.returnRates, COLORS.gold)]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        y: { beginAtZero: true, grid: { color: '#21262D44' }, ticks: { callback: v => v + '%' } },
+        x: { grid: { display: false } }
+      },
+      plugins: {
+        datalabels: { display: true, anchor: 'end', align: 'top', color: COLORS.gold, font: { size: 10, weight: 600 }, formatter: v => v.toFixed(1) + '%' },
+        annotation: {
+          annotations: {
+            avg: { type: 'line', yMin: d.returnRates.reduce((a,b)=>a+b)/12, yMax: d.returnRates.reduce((a,b)=>a+b)/12,
+              borderColor: COLORS.red + '80', borderDash: [4,4], borderWidth: 1,
+              label: { display: true, content: 'Avg', position: 'end', color: COLORS.red, font: { size: 10 }, backgroundColor: 'transparent' }
+            }
+          }
+        }
+      }
+    },
+    plugins: [ChartDataLabels]
+  });
+
+  // 6. Resurrection Rate
+  makeChart('resurrection', {
+    type: 'bar',
+    data: {
+      labels: MONTHS,
+      datasets: [barDataset('Resurrection Rate', d.resurrectRates, COLORS.teal)]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        y: { beginAtZero: true, grid: { color: '#21262D44' }, ticks: { callback: v => v + '%' } },
+        x: { grid: { display: false } }
+      },
+      plugins: {
+        datalabels: { display: true, anchor: 'end', align: 'top', color: COLORS.teal, font: { size: 10, weight: 600 }, formatter: v => v.toFixed(1) + '%' }
+      }
+    },
+    plugins: [ChartDataLabels]
+  });
+
+  // 7. Churn Reasons (horizontal bar)
+  makeChart('churnReasons', {
+    type: 'bar',
+    data: {
+      labels: d.churnReasons.labels,
+      datasets: [{
+        data: d.churnReasons.data,
+        backgroundColor: [COLORS.red+'CC', COLORS.orange+'CC', COLORS.gold+'CC', COLORS.purple+'CC', COLORS.blue+'CC', COLORS.teal+'CC', COLORS.green+'CC', COLORS.lime+'CC'],
+        borderWidth: 0,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { beginAtZero: true, grid: { color: '#21262D44' }, ticks: { callback: v => v + '%' } },
+        y: { grid: { display: false } }
+      },
+      plugins: {
+        legend: { display: false },
+        datalabels: { display: true, anchor: 'end', align: 'right', color: '#E6EDF3', font: { size: 10, weight: 600 }, formatter: v => v.toFixed(1) + '%' }
+      }
+    },
+    plugins: [ChartDataLabels]
+  });
+
+  // 8. Time-to-Churn Distribution
+  makeChart('timeToChurn', {
+    type: 'bar',
+    data: {
+      labels: d.timeToChurn.labels,
+      datasets: [{
+        label: '% of Churned Users',
+        data: d.timeToChurn.data,
+        backgroundColor: COLORS.purple + 'AA',
+        borderColor: COLORS.purple,
+        borderWidth: 1,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        y: { beginAtZero: true, grid: { color: '#21262D44' }, ticks: { callback: v => v + '%' } },
+        x: { grid: { display: false }, ticks: { maxRotation: 45 } }
+      },
+      plugins: {
+        datalabels: { display: true, anchor: 'end', align: 'top', color: COLORS.purple, font: { size: 10, weight: 600 }, formatter: v => v.toFixed(1) + '%' }
+      }
+    },
+    plugins: [ChartDataLabels]
+  });
+
+  // 9. Retention by Acquisition Source (grouped bar)
+  makeChart('acqRetention', {
+    type: 'bar',
+    data: {
+      labels: d.acqSources.labels,
+      datasets: [
+        barDataset('D30 Retention', d.acqSources.d30, COLORS.blue),
+        barDataset('D90 Retention', d.acqSources.d90, COLORS.purple)
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        y: { beginAtZero: true, grid: { color: '#21262D44' }, ticks: { callback: v => v + '%' } },
+        x: { grid: { display: false } }
+      },
+      plugins: {
+        datalabels: { display: true, anchor: 'end', align: 'top', font: { size: 9, weight: 600 },
+          color: ctx => ctx.datasetIndex === 0 ? COLORS.blue : COLORS.purple,
+          formatter: v => v.toFixed(0) + '%'
+        }
+      }
+    },
+    plugins: [ChartDataLabels]
+  });
+
+  // 10. Cohort Revenue Over Time (stacked area)
+  const crDatasets = d.cohortLabels.map((cl, i) => ({
+    label: cl + ' cohort',
+    data: d.cohortRevenue[i],
+    backgroundColor: COHORT_COLORS[i] + '55',
+    borderColor: COHORT_COLORS[i],
+    borderWidth: 1.5,
+    fill: true,
+    pointRadius: 0
+  }));
+  makeChart('cohortRevenue', {
+    type: 'line',
+    data: { labels: MONTHS, datasets: crDatasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        y: { stacked: true, beginAtZero: true, grid: { color: '#21262D44' },
+          ticks: { callback: v => '$' + fmtNum(v) }
+        },
+        x: { grid: { display: false } }
+      },
+      plugins: {
+        tooltip: { mode: 'index', callbacks: { label: ctx => ctx.parsed.y != null ? `${ctx.dataset.label}: $${fmtNum(ctx.parsed.y)}` : '' } }
+      }
+    }
+  });
+}
+
+function buildGrowthCharts(d, p) {
+  makeChart('growthMAU', {
+    type: 'line',
+    data: { labels: MONTHS, datasets: [lineDataset('MAU', p.mau.map(v => v * 1e6), p.color, { fill: true, backgroundColor: p.color + '20' })] },
+    options: { responsive: true, maintainAspectRatio: false,
+      scales: { y: { beginAtZero: false, grid: { color: '#21262D44' }, ticks: { callback: v => fmtNum(v) } }, x: { grid: { display: false } } }
+    }
+  });
+  const newUsers = p.mau.map(v => Math.round(v * 1e6 * (0.06 + Math.random() * 0.04)));
+  const returning = p.mau.map((v, i) => Math.round(v * 1e6 - newUsers[i]));
+  makeChart('growthNew', {
+    type: 'bar',
+    data: { labels: MONTHS, datasets: [
+      barDataset('New Users', newUsers, COLORS.green),
+      barDataset('Returning', returning, COLORS.blue)
+    ]},
+    options: { responsive: true, maintainAspectRatio: false,
+      scales: { y: { stacked: true, grid: { color: '#21262D44' }, ticks: { callback: v => fmtNum(v) } }, x: { stacked: true, grid: { display: false } } }
+    }
+  });
+}
+
+function buildEngagementCharts(d, p) {
+  const sessions = trend(44, 0.3, 2, 12);
+  makeChart('engSession', {
+    type: 'line',
+    data: { labels: MONTHS, datasets: [lineDataset('Avg Session (min)', sessions, COLORS.purple, { fill: true, backgroundColor: COLORS.purple + '15' })] },
+    options: { responsive: true, maintainAspectRatio: false,
+      scales: { y: { beginAtZero: false, grid: { color: '#21262D44' } }, x: { grid: { display: false } } }
+    }
+  });
+  const dau = p.mau.map(v => Math.round(v * 1e6 * (0.30 + Math.random() * 0.05)));
+  makeChart('engDAU', {
+    type: 'bar',
+    data: { labels: MONTHS, datasets: [barDataset('DAU', dau, COLORS.green2)] },
+    options: { responsive: true, maintainAspectRatio: false,
+      scales: { y: { beginAtZero: false, grid: { color: '#21262D44' }, ticks: { callback: v => fmtNum(v) } }, x: { grid: { display: false } } }
+    }
+  });
+}
+
+function buildMonetizationCharts(d, p) {
+  const rev = p.mau.map((v, i) => +(p.revenueBase * 1e9 / 12 * (1 + i * 0.01 + Math.random() * 0.05)).toFixed(0));
+  makeChart('monRevenue', {
+    type: 'bar',
+    data: { labels: MONTHS, datasets: [barDataset('Revenue', rev, COLORS.gold)] },
+    options: { responsive: true, maintainAspectRatio: false,
+      scales: { y: { beginAtZero: false, grid: { color: '#21262D44' }, ticks: { callback: v => '$' + fmtNum(v) } }, x: { grid: { display: false } } }
+    }
+  });
+  const arpu = p.mau.map((v, i) => +(p.revenueBase * 1000 / v / 12 * (1 + i * 0.005 + Math.random() * 0.02)).toFixed(2));
+  makeChart('monARPU', {
+    type: 'line',
+    data: { labels: MONTHS, datasets: [lineDataset('ARPU', arpu, COLORS.green, { fill: true, backgroundColor: COLORS.green + '15' })] },
+    options: { responsive: true, maintainAspectRatio: false,
+      scales: { y: { beginAtZero: false, grid: { color: '#21262D44' }, ticks: { callback: v => '$' + v.toFixed(2) } }, x: { grid: { display: false } } }
+    }
+  });
+}
+
+// ── Navigation ──
+function showSection(section) {
+  currentSection = section;
+  document.querySelectorAll('.nav-item[data-section]').forEach(el => el.classList.toggle('active', el.dataset.section === section));
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  const sec = document.getElementById('sec-' + section);
+  if (sec) sec.classList.add('active');
+  Object.values(charts).forEach(c => c.destroy());
+  for (const k in charts) delete charts[k];
+  requestAnimationFrame(() => buildCharts());
+}
+
+function switchGame(game) {
+  currentGame = game;
+  document.querySelectorAll('.nav-item[data-game]').forEach(el => el.classList.toggle('active', el.dataset.game === game));
+  render();
+}
+
+// ── Init ──
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Xbox Executive Dashboard — Growth &amp; Acquisition</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+<style>
+:root {
+  --bg: #0D1117; --card: #161B22; --border: #21262D; --text: #E6EDF3;
+  --text-secondary: #8B949E; --text-muted: #484F58;
+  --xbox-green: #107C10; --bright-green: #10893E; --light-green: #7FBA00;
+  --blue: #0078D4; --purple: #7B68EE; --orange: #FF8C00;
+  --red: #E81123; --gold: #FFB900;
+  --sidebar-w: 220px; --header-h: 56px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); overflow-x:hidden; }
+
+/* Header */
+.header {
+  position:fixed; top:0; left:0; right:0; height:var(--header-h);
+  background:linear-gradient(135deg, #0f1923 0%, #0D1117 100%);
+  border-bottom:1px solid var(--border); display:flex; align-items:center;
+  padding:0 24px; z-index:100; gap:16px;
+}
+.header-logo { width:36px; height:36px; display:flex; align-items:center; justify-content:center; }
+.header-logo svg { width:32px; height:32px; }
+.header h1 { font-size:18px; font-weight:700; letter-spacing:-0.3px; }
+.header h1 span { color:var(--xbox-green); }
+.header-badge { background:var(--xbox-green); color:#fff; font-size:10px; font-weight:700;
+  padding:3px 8px; border-radius:10px; text-transform:uppercase; letter-spacing:0.5px; }
+.header-right { margin-left:auto; display:flex; align-items:center; gap:16px; }
+.header-right .illus { font-size:11px; color:var(--text-muted); font-style:italic; }
+
+/* Sidebar */
+.sidebar {
+  position:fixed; top:var(--header-h); left:0; bottom:0; width:var(--sidebar-w);
+  background:var(--card); border-right:1px solid var(--border);
+  padding:16px 0; overflow-y:auto; z-index:90;
+}
+.sidebar-section { padding:0 16px; margin-bottom:16px; }
+.sidebar-section-title { font-size:10px; font-weight:700; text-transform:uppercase;
+  color:var(--text-muted); letter-spacing:1px; margin-bottom:8px; }
+.nav-item {
+  display:flex; align-items:center; gap:10px; padding:8px 16px; cursor:pointer;
+  color:var(--text-secondary); font-size:13px; font-weight:500;
+  border-radius:6px; margin:2px 8px; transition:all .15s;
+}
+.nav-item:hover { background:rgba(255,255,255,.05); color:var(--text); }
+.nav-item.active { background:rgba(16,124,16,.15); color:var(--xbox-green); }
+.nav-item .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.nav-section-label {
+  font-size:10px; font-weight:700; text-transform:uppercase;
+  color:var(--text-muted); letter-spacing:1px; padding:16px 16px 6px;
+}
+
+/* Main */
+.main { margin-left:var(--sidebar-w); margin-top:var(--header-h); padding:24px; min-height:calc(100vh - var(--header-h)); }
+
+/* Tab bar */
+.tab-bar { display:flex; gap:4px; margin-bottom:24px; flex-wrap:wrap;
+  background:var(--card); border-radius:10px; padding:4px; border:1px solid var(--border); }
+.tab-btn {
+  padding:8px 18px; border-radius:8px; border:none; cursor:pointer;
+  font-family:'Inter',sans-serif; font-size:13px; font-weight:600;
+  color:var(--text-secondary); background:transparent; transition:all .15s;
+}
+.tab-btn:hover { color:var(--text); background:rgba(255,255,255,.05); }
+.tab-btn.active { background:var(--xbox-green); color:#fff; }
+
+/* Section headers */
+.section-header {
+  display:flex; align-items:center; gap:12px; margin:32px 0 16px;
+  padding-bottom:12px; border-bottom:1px solid var(--border);
+}
+.section-header:first-child { margin-top:0; }
+.section-header h2 { font-size:16px; font-weight:700; }
+.section-header .badge { font-size:10px; color:var(--text-muted); font-weight:500;
+  background:rgba(255,255,255,.05); padding:3px 8px; border-radius:4px; }
+
+/* KPI row */
+.kpi-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-bottom:24px; }
+.kpi-card {
+  background:var(--card); border:1px solid var(--border); border-radius:10px;
+  padding:16px 20px; position:relative;
+}
+.kpi-card .kpi-label { font-size:11px; color:var(--text-secondary); font-weight:500;
+  text-transform:uppercase; letter-spacing:.5px; display:flex; align-items:center; gap:6px; }
+.kpi-card .kpi-value { font-size:28px; font-weight:800; margin:6px 0 4px; letter-spacing:-1px; }
+.kpi-card .kpi-delta { font-size:12px; font-weight:600; }
+.kpi-card .kpi-delta.up { color:var(--xbox-green); }
+.kpi-card .kpi-delta.down { color:var(--red); }
+.kpi-card .kpi-delta.neutral { color:var(--gold); }
+.kpi-accent { position:absolute; top:0; left:0; right:0; height:3px; border-radius:10px 10px 0 0; }
+.info-tip {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:14px; height:14px; border-radius:50%; background:rgba(255,255,255,.08);
+  font-size:9px; color:var(--text-muted); cursor:help; position:relative;
+}
+.info-tip:hover::after {
+  content:attr(data-tip); position:absolute; bottom:calc(100% + 6px); left:50%;
+  transform:translateX(-50%); background:#1c2128; color:var(--text-secondary);
+  font-size:11px; padding:6px 10px; border-radius:6px; white-space:nowrap;
+  border:1px solid var(--border); z-index:10; font-weight:400; text-transform:none;
+  letter-spacing:normal; max-width:260px; white-space:normal;
+}
+
+/* Chart grid */
+.chart-grid { display:grid; gap:16px; margin-bottom:24px; }
+.chart-grid.cols-2 { grid-template-columns:repeat(2,1fr); }
+.chart-grid.cols-3 { grid-template-columns:repeat(3,1fr); }
+.chart-grid.cols-1 { grid-template-columns:1fr; }
+.chart-card {
+  background:var(--card); border:1px solid var(--border); border-radius:10px;
+  padding:20px; position:relative;
+}
+.chart-card h3 { font-size:13px; font-weight:600; margin-bottom:4px; display:flex; align-items:center; gap:8px; }
+.chart-card .chart-sub { font-size:11px; color:var(--text-muted); margin-bottom:16px; font-style:italic; }
+.chart-wrap { position:relative; width:100%; }
+.chart-wrap canvas { width:100%!important; }
+
+/* Tab content */
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+
+/* Responsive */
+@media(max-width:1200px) { .chart-grid.cols-2 { grid-template-columns:1fr; } }
+@media(max-width:900px) {
+  .sidebar { display:none; }
+  .main { margin-left:0; }
+  .kpi-row { grid-template-columns:repeat(2,1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-logo">
+    <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="15" stroke="#107C10" stroke-width="2"/>
+    <path d="M16 4C9.4 4 4 9.4 4 16s5.4 12 12 12 12-5.4 12-12S22.6 4 16 4zm-4.8 6.2c1.2-1 2.6-1.6 4-1.8-.8.6-1.6 1.4-2.4 2.4-1.2 1.6-2 3.4-2.6 5.2-.8-1.8-1-3.6.2-5.2.2-.2.5-.4.8-.6zm9.6 0c.3.2.6.4.8.6 1.2 1.6 1 3.4.2 5.2-.6-1.8-1.4-3.6-2.6-5.2-.8-1-1.6-1.8-2.4-2.4 1.4.2 2.8.8 4 1.8zM16 24.4c-1.4 0-3.2-2.4-4.2-4.8-.8-2-1.2-4.2-1-5.8.4.6 1 1.4 1.6 2.2 1.2 1.6 2.6 3.6 3.6 5.8 1-2.2 2.4-4.2 3.6-5.8.6-.8 1.2-1.6 1.6-2.2.2 1.6-.2 3.8-1 5.8-1 2.4-2.8 4.8-4.2 4.8z" fill="#107C10"/></svg>
+  </div>
+  <h1><span>Xbox</span> Executive Dashboard</h1>
+  <div class="header-badge">Growth &amp; Acquisition</div>
+  <div class="header-right">
+    <span class="illus">All data is illustrative</span>
+    <span style="font-size:12px;color:var(--text-secondary)">FY26 · May 2025 – Apr 2026</span>
+  </div>
+</header>
+
+<!-- Sidebar -->
+<nav class="sidebar">
+  <div class="nav-section-label">Dashboards</div>
+  <div class="nav-item active" onclick="switchTab('rolled-up')">
+    <span class="dot" style="background:var(--xbox-green)"></span> Rolled Up (Total Xbox)
+  </div>
+
+  <div class="nav-section-label" style="margin-top:20px">Franchises</div>
+  <div class="nav-item" onclick="switchTab('gamepass')">
+    <span class="dot" style="background:var(--bright-green)"></span> Game Pass
+  </div>
+  <div class="nav-item" onclick="switchTab('halo')">
+    <span class="dot" style="background:var(--blue)"></span> Halo
+  </div>
+  <div class="nav-item" onclick="switchTab('forza')">
+    <span class="dot" style="background:var(--orange)"></span> Forza
+  </div>
+  <div class="nav-item" onclick="switchTab('cod')">
+    <span class="dot" style="background:var(--red)"></span> Call of Duty
+  </div>
+  <div class="nav-item" onclick="switchTab('minecraft')">
+    <span class="dot" style="background:var(--light-green)"></span> Minecraft
+  </div>
+  <div class="nav-item" onclick="switchTab('sot')">
+    <span class="dot" style="background:var(--gold)"></span> Sea of Thieves
+  </div>
+  <div class="nav-item" onclick="switchTab('starfield')">
+    <span class="dot" style="background:var(--purple)"></span> Starfield
+  </div>
+
+  <div class="nav-section-label" style="margin-top:20px">Sections</div>
+  <div class="nav-item" onclick="scrollToSection('growth')">📈 Growth &amp; Acquisition</div>
+  <div class="nav-item" onclick="scrollToSection('engagement')">🎮 Engagement</div>
+  <div class="nav-item" onclick="scrollToSection('monetization')">💰 Monetization</div>
+  <div class="nav-item" onclick="scrollToSection('retention')">🔄 Retention</div>
+</nav>
+
+<!-- Main Content -->
+<main class="main">
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('rolled-up')">Rolled Up</button>
+    <button class="tab-btn" onclick="switchTab('gamepass')">Game Pass</button>
+    <button class="tab-btn" onclick="switchTab('halo')">Halo</button>
+    <button class="tab-btn" onclick="switchTab('forza')">Forza</button>
+    <button class="tab-btn" onclick="switchTab('cod')">Call of Duty</button>
+    <button class="tab-btn" onclick="switchTab('minecraft')">Minecraft</button>
+    <button class="tab-btn" onclick="switchTab('sot')">Sea of Thieves</button>
+    <button class="tab-btn" onclick="switchTab('starfield')">Starfield</button>
+  </div>
+
+  <!-- ==================== ROLLED UP TAB ==================== -->
+  <div id="tab-rolled-up" class="tab-content active">
+
+    <!-- ===== GROWTH & ACQUISITION ===== -->
+    <div id="section-growth">
+      <div class="section-header">
+        <h2>📈 User Growth &amp; Acquisition</h2>
+        <span class="badge">Primary Focus · 8 Charts</span>
+        <span class="badge">Illustrative Data</span>
+      </div>
+
+      <!-- KPI row -->
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-accent" style="background:var(--xbox-green)"></div>
+          <div class="kpi-label">Total Ecosystem MAU <span class="info-tip" data-tip="Monthly Active Users across Xbox Console, PC, Cloud Gaming, and Mobile (unduplicated)">?</span></div>
+          <div class="kpi-value" style="color:var(--xbox-green)">142.3M</div>
+          <div class="kpi-delta up">▲ 11.2% YoY</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-accent" style="background:var(--bright-green)"></div>
+          <div class="kpi-label">Game Pass Subscribers <span class="info-tip" data-tip="Total paid Game Pass subscribers across Core, Standard, and Ultimate tiers">?</span></div>
+          <div class="kpi-value" style="color:var(--bright-green)">37.1M</div>
+          <div class="kpi-delta up">▲ 14.8% YoY</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-accent" style="background:var(--blue)"></div>
+          <div class="kpi-label">New User Activations (MTD) <span class="info-tip" data-tip="New unique accounts activated this month across all platforms">?</span></div>
+          <div class="kpi-value" style="color:var(--blue)">4.8M</div>
+          <div class="kpi-delta up">▲ 8.3% MoM</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-accent" style="background:var(--purple)"></div>
+          <div class="kpi-label">Cloud Gaming MAU <span class="info-tip" data-tip="Users streaming games via Xbox Cloud Gaming (xCloud) in the last 30 days">?</span></div>
+          <div class="kpi-value" style="color:var(--purple)">18.7M</div>
+          <div class="kpi-delta up">▲ 32.5% YoY</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-accent" style="background:var(--gold)"></div>
+          <div class="kpi-label">PC MAU <span class="info-tip" data-tip="Monthly Active Users on Windows PC (Xbox app, Steam crossplay, MS Store)">?</span></div>
+          <div class="kpi-value" style="color:var(--gold)">38.2M</div>
+          <div class="kpi-delta up">▲ 18.1% YoY</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-accent" style="background:var(--orange)"></div>
+          <div class="kpi-label">Net Growth Rate <span class="info-tip" data-tip="(New + Returning − Churned) / Prior Month MAU — net monthly user growth rate">?</span></div>
+          <div class="kpi-value" style="color:var(--orange)">+2.1%</div>
+          <div class="kpi-delta up">▲ 0.4pp MoM</div>
+        </div>
+      </div>
+
+      <!-- Chart 1 & 2 -->
+      <div class="chart-grid cols-2">
+        <div class="chart-card">
+          <h3>Monthly Active Users by Platform <span class="info-tip" data-tip="Stacked area showing MAU breakdown by platform. Users on multiple platforms counted once per platform.">?</span></h3>
+          <div class="chart-sub">Illustrative Data · May 2025 – Apr 2026</div>
+          <div class="chart-wrap"><canvas id="chartMAUPlatform"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>New User Activations by Channel <span class="info-tip" data-tip="Monthly new unique accounts by acquisition channel. Channels: Game Pass trial, retail, F2P entry, cross-promotion.">?</span></h3>
+          <div class="chart-sub">Illustrative Data · May 2025 – Apr 2026</div>
+          <div class="chart-wrap"><canvas id="chartNewUsers"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Chart 3 & 4 -->
+      <div class="chart-grid cols-2">
+        <div class="chart-card">
+          <h3>Game Pass Subscriber Growth by Tier <span class="info-tip" data-tip="Line chart showing paid subscriber count by tier: Core ($9.99), Standard ($14.99), Ultimate ($19.99).">?</span></h3>
+          <div class="chart-sub">Illustrative Data · May 2025 – Apr 2026</div>
+          <div class="chart-wrap"><canvas id="chartGPGrowth"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Platform Mix Shift <span class="info-tip" data-tip="100% stacked area showing how user share shifts across platforms over time. Illustrates the growth of PC/Cloud relative to console.">?</span></h3>
+          <div class="chart-sub">Illustrative Data · May 2025 – Apr 2026</div>
+          <div class="chart-wrap"><canvas id="chartPlatformMix"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Chart 5 (full width waterfall) -->
+      <div class="chart-grid cols-1">
+        <div class="chart-card">
+          <h3>User Growth Waterfall <span class="info-tip" data-tip="Monthly waterfall: New activations + Returning lapsed users − Churned users = Net Growth. Positive bars green, negative red.">?</span></h3>
+          <div class="chart-sub">Illustrative Data · May 2025 – Apr 2026</div>
+          <div class="chart-wrap"><canvas id="chartWaterfall" height="100"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Chart 6 & 7 -->
+      <div class="chart-grid cols-2">
+        <div class="chart-card">
+          <h3>Geographic Expansion <span class="info-tip" data-tip="MAU by region: North America, EMEA, Asia-Pacific, Latin America. Shows geographic diversification trend.">?</span></h3>
+          <div class="chart-sub">Illustrative Data · May 2025 – Apr 2026</div>
+          <div class="chart-wrap"><canvas id="chartGeo"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Acquisition Cost per User (CAC) <span class="info-tip" data-tip="Blended cost to acquire a new user by channel. Lower is better. Includes marketing, trial subsidies, and partner fees.">?</span></h3>
+          <div class="chart-sub">Illustrative Data · May 2025 – Apr 2026</div>
+          <div class="chart-wrap"><canvas id="chartCAC"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Chart 8 & 9 -->
+      <div class="chart-grid cols-2">
+        <div class="chart-card">
+          <h3>Multi-Platform User Penetration <span class="info-tip" data-tip="Percentage of MAU using 1, 2, 3, or 4+ platforms. Higher multi-platform usage correlates with higher retention.">?</span></h3>
+          <div class="chart-sub">Illustrative Data · May 2025 – Apr 2026</div>
+          <div class="chart-wrap"><canvas id="chartMultiPlat"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Weekly Active Users Trend <span class="info-tip" data-tip="WAU trend with holiday/launch spikes annotated. Smoothed 4-week rolling average.">?</span></h3>
+          <div class="chart-sub">Illustrative Data · May 2025 – Apr 2026</div>
+          <div class="chart-wrap"><canvas id="chartWAU"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== ENGAGEMENT ===== -->
+    <div id="section-engagement">
+      <div class="section-header">
+        <h2>🎮 Engagement</h2>
+        <span class="badge">4 Charts</span>
+      </div>
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-accent" style="background:var(--blue)"></div>
+          <div class="kpi-label">DAU <span class="info-tip" data-tip="Daily Active Users — unique users who played or engaged with Xbox services today">?</span></div>
+          <div class="kpi-value" style="color:var(--blue)">48.6M</div>
+          <div class="kpi-delta up">▲ 9.4% YoY</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-accent" style="background:var(--purple)"></div>
+          <div class="kpi-label">DAU/MAU Ratio <span class="info-tip" data-tip="Stickiness ratio: what fraction of monthly users come back daily. Higher = stickier.">?</span></div>
+          <div class="kpi-value" style="color:var(--purple)">34.2%</div>
+          <div class="kpi-delta up">▲ 1.1pp YoY</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-accent" style="background:var(--orange)"></div>
+          <div class="kpi-label">Avg Minutes/User/Day <span class="info-tip" data-tip="Average daily play time per active user across all platforms">?</span></div>
+          <div class="kpi-value" style="color:var(--orange)">52 min</div>
+          <div class="kpi-delta up">▲ 4.2% YoY</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-accent" style="background:var(--gold)"></div>
+          <div class="kpi-label">Sessions/User/Month <span class="info-tip" data-tip="Average game sessions per monthly active user. Higher = more habitual engagement.">?</span></div>
+          <div class="kpi-value" style="color:var(--gold)">18.3</div>
+          <div class="kpi-delta up">▲ 6.1% YoY</div>
+        </div>
+      </div>
+      <div class="chart-grid cols-2">
+        <div class="chart-card">
+          <h3>DAU/MAU Trend</h3>
+          <div class="chart-sub">Illustrative Data</div>
+          <div class="chart-wrap"><canvas id="chartDAUMAU"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Avg Minutes Played per User</h3>
+          <div class="chart-sub">Illustrative Data</div>
+          <div class="chart-wrap"><canvas id="chartMinutes"></canvas></div>
+        </div>
+      </div>
+      <div class="chart-grid cols-2">
+        <div class="chart-card">
+          <h3>Sessions per User per Month</h3>
+          <div class="chart-sub">Illustrative Data</div>
+          <div class="chart-wrap"><canvas id="chartSessions"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Total Hours Played (Billions)</h3>
+          <div class="chart-sub">Illustrative Data</div>
+          <div class="chart-wrap"><canvas id="chartHours"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MONETIZATION ===== -->
+    <div id="section-monetization">
+      <div class="section-header">
+        <h2>💰 Monetization</h2>
+        <span class="badge">4 Charts</span>
+      </div>
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-accent" style="background:var(--xbox-green)"></div>
+          <div class="kpi-label">Monthly Revenue <span class="info-tip" data-tip="Total Xbox gaming revenue: subscriptions + MTX + DLC + first-party sales">?</span></div>
+          <div class="kpi-value" style="color:var(--xbox-green)">$1.92B</div>
+          <div class="kpi-delta up">▲ 13.2% YoY</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-accent" style="background:var(--gold)"></div>
+          <div class="kpi-label">ARPU <span class="info-tip" data-tip="Average Revenue Per User per month across all monetization streams">?</span></div>
+          <div class="kpi-value" style="color:var(--gold)">$13.49</div>
+          <div class="kpi-delta up">▲ 1.8% YoY</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-accent" style="background:var(--bright-green)"></div>
+          <div class="kpi-label">Game Pass Revenue <span class="info-tip" data-tip="Monthly subscription revenue from all Game Pass tiers">?</span></div>
+          <div class="kpi-value" style="color:var(--bright-green)">$612M</div>
+          <div class="kpi-delta up">▲ 18.4% YoY</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-accent" style="background:var(--orange)"></div>
+          <div class="kpi-label">MTX + DLC Revenue <span class="info-tip" data-tip="Microtransaction and downloadable content revenue across all titles">?</span></div>
+          <div class="kpi-value" style="color:var(--orange)">$834M</div>
+          <div class="kpi-delta up">▲ 9.7% YoY</div>
+        </div>
+      </div>
+      <div class="chart-grid cols-2">
+        <div class="chart-card">
+          <h3>Revenue by Stream</h3>
+          <div class="chart-sub">Illustrative Data</div>
+          <div class="chart-wrap"><canvas id="chartRevStream"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>ARPU Trend</h3>
+          <div class="chart-sub">Illustrative Data</div>
+          <div class="chart-wrap"><canvas id="chartARPU"></canvas></div>
+        </div>
+      </div>
+      <div class="chart-grid cols-2">
+        <div class="chart-card">
+          <h3>Revenue by Title (Top 5)</h3>
+          <div class="chart-sub">Illustrative Data</div>
+          <div class="chart-wrap"><canvas id="chartRevTitle"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Subscription Revenue Mix</h3>
+          <div class="chart-sub">Illustrative Data</div>
+          <div class="chart-wrap"><canvas id="chartSubMix"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== RETENTION ===== -->
+    <div id="section-retention">
+      <div class="section-header">
+        <h2>🔄 Retention</h2>
+        <span class="badge">4 Charts</span>
+      </div>
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-accent" style="background:var(--xbox-green)"></div>
+          <div class="kpi-label">M1 Retention <span class="info-tip" data-tip="Percentage of new users active 30 days after first session">?</span></div>
+          <div class="kpi-value" style="color:var(--xbox-green)">68.4%</div>
+          <div class="kpi-delta up">▲ 2.3pp YoY</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-accent" style="background:var(--blue)"></div>
+          <div class="kpi-label">M3 Retention</div>
+          <div class="kpi-value" style="color:var(--blue)">51.2%</div>
+          <div class="kpi-delta up">▲ 1.8pp YoY</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-accent" style="background:var(--purple)"></div>
+          <div class="kpi-label">M6 Retention</div>
+          <div class="kpi-value" style="color:var(--purple)">39.7%</div>
+          <div class="kpi-delta up">▲ 1.4pp YoY</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-accent" style="background:var(--gold)"></div>
+          <div class="kpi-label">M12 Retention</div>
+          <div class="kpi-value" style="color:var(--gold)">28.6%</div>
+          <div class="kpi-delta up">▲ 2.1pp YoY</div>
+        </div>
+      </div>
+      <div class="chart-grid cols-2">
+        <div class="chart-card">
+          <h3>Retention Curves by Cohort</h3>
+          <div class="chart-sub">Illustrative Data</div>
+          <div class="chart-wrap"><canvas id="chartRetCurve"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Retention by Platform</h3>
+          <div class="chart-sub">Illustrative Data</div>
+          <div class="chart-wrap"><canvas id="chartRetPlat"></canvas></div>
+        </div>
+      </div>
+      <div class="chart-grid cols-2">
+        <div class="chart-card">
+          <h3>Churn Rate Trend</h3>
+          <div class="chart-sub">Illustrative Data</div>
+          <div class="chart-wrap"><canvas id="chartChurn"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Reactivation Rate</h3>
+          <div class="chart-sub">Illustrative Data</div>
+          <div class="chart-wrap"><canvas id="chartReact"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div><!-- end rolled-up -->
+
+  <!-- ==================== GAME TABS ==================== -->
+  <!-- Each game tab gets generated dynamically -->
+  <div id="tab-gamepass" class="tab-content"></div>
+  <div id="tab-halo" class="tab-content"></div>
+  <div id="tab-forza" class="tab-content"></div>
+  <div id="tab-cod" class="tab-content"></div>
+  <div id="tab-minecraft" class="tab-content"></div>
+  <div id="tab-sot" class="tab-content"></div>
+  <div id="tab-starfield" class="tab-content"></div>
+</main>
+
+<script>
+// ===== GLOBAL SETUP =====
+Chart.defaults.color = '#8B949E';
+Chart.defaults.borderColor = '#21262D';
+Chart.defaults.font.family = 'Inter';
+Chart.defaults.font.size = 11;
+Chart.defaults.plugins.legend.labels.usePointStyle = true;
+Chart.defaults.plugins.legend.labels.pointStyleWidth = 8;
+Chart.defaults.plugins.legend.labels.padding = 14;
+Chart.register(ChartDataLabels);
+// Disable datalabels globally, enable per chart
+Chart.defaults.plugins.datalabels.display = false;
+
+const MONTHS = ['May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr'];
+const C = {
+  green:'#107C10', bgreen:'#10893E', lgreen:'#7FBA00', blue:'#0078D4',
+  purple:'#7B68EE', orange:'#FF8C00', red:'#E81123', gold:'#FFB900'
+};
+
+function alpha(hex, a) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+function makeGradient(ctx, hex) {
+  const g = ctx.createLinearGradient(0,0,0,300);
+  g.addColorStop(0, alpha(hex,.35)); g.addColorStop(1, alpha(hex,.02));
+  return g;
+}
+
+const chartInstances = {};
+function mkChart(id, cfg) {
+  const el = document.getElementById(id);
+  if (!el) return null;
+  if (chartInstances[id]) { chartInstances[id].destroy(); }
+  const c = new Chart(el, cfg);
+  chartInstances[id] = c;
+  return c;
+}
+
+// ===== CHART DATA =====
+// 1. MAU by Platform (stacked area)
+const mauConsole = [62,63,61,60,64,68,71,74,70,67,66,65];
+const mauPC     = [28,29,30,31,32,34,35,37,38,38,38,38.2];
+const mauCloud  = [10,10.5,11,12,13,14,15,16,17,17.5,18,18.7];
+const mauMobile = [14,14.5,15,15.5,16,17,17.5,18,19,19.5,20,20.4];
+
+// 2. New User Activations by channel
+const nuGPTrial   = [1.2,1.1,1.3,1.4,1.6,2.0,2.2,2.5,1.8,1.5,1.4,1.5];
+const nuRetail    = [0.8,0.7,0.6,0.7,0.8,1.2,1.5,1.8,0.9,0.7,0.6,0.7];
+const nuF2P       = [1.5,1.6,1.7,1.8,1.9,2.1,2.0,2.2,2.0,1.9,1.8,1.9];
+const nuCrossPromo= [0.4,0.4,0.5,0.5,0.6,0.7,0.7,0.8,0.6,0.5,0.5,0.7];
+
+// 3. Game Pass tiers
+const gpCore     = [12.0,12.2,12.1,12.3,12.5,13.0,13.2,13.5,13.3,13.1,13.0,13.2];
+const gpStandard = [8.5,8.7,8.9,9.0,9.2,9.5,9.8,10.0,10.2,10.4,10.5,10.6];
+const gpUltimate = [9.5,9.8,10.0,10.2,10.5,11.0,11.5,12.0,12.2,12.5,12.8,13.3];
+
+// 5. Waterfall
+const wfNew      = [3.9,3.8,4.1,4.4,4.9,6.0,6.4,7.3,5.3,4.6,4.3,4.8];
+const wfReturn   = [1.8,1.7,1.9,2.0,2.2,2.8,2.6,3.0,2.4,2.1,2.0,2.2];
+const wfChurned  = [3.5,3.4,3.2,3.3,3.6,3.8,4.0,4.2,3.8,3.5,3.4,3.6];
+
+// 6. Geo
+const geoNA   = [52,53,52,51,54,57,60,63,60,57,56,55];
+const geoEMEA = [32,33,33,34,35,37,38,40,39,38,37,37];
+const geoAPAC = [18,19,20,21,22,24,25,27,26,26,26,27];
+const geoLATAM= [12,12.5,13,13.5,14,15,15.5,16,17,17.5,18,18.3];
+
+function buildRolledUpCharts() {
+  // 1. MAU by Platform
+  const ctx1 = document.getElementById('chartMAUPlatform');
+  if(ctx1) mkChart('chartMAUPlatform',{
+    type:'line',
+    data:{
+      labels:MONTHS,
+      datasets:[
+        {label:'Console',data:mauConsole,fill:true,backgroundColor:alpha(C.green,.25),borderColor:C.green,borderWidth:2,tension:.3,pointRadius:0},
+        {label:'PC',data:mauPC,fill:true,backgroundColor:alpha(C.blue,.25),borderColor:C.blue,borderWidth:2,tension:.3,pointRadius:0},
+        {label:'Cloud',data:mauCloud,fill:true,backgroundColor:alpha(C.purple,.25),borderColor:C.purple,borderWidth:2,tension:.3,pointRadius:0},
+        {label:'Mobile',data:mauMobile,fill:true,backgroundColor:alpha(C.gold,.25),borderColor:C.gold,borderWidth:2,tension:.3,pointRadius:0},
+      ]
+    },
+    options:{
+      responsive:true, interaction:{intersect:false,mode:'index'},
+      scales:{
+        x:{grid:{display:false}},
+        y:{stacked:true,title:{display:true,text:'MAU (Millions)'},grid:{color:'rgba(255,255,255,.04)'}}
+      },
+      plugins:{tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}M`}}}
+    }
+  });
+
+  // 2. New Users by Channel
+  mkChart('chartNewUsers',{
+    type:'bar',
+    data:{
+      labels:MONTHS,
+      datasets:[
+        {label:'Game Pass Trial',data:nuGPTrial,backgroundColor:C.green,borderRadius:3},
+        {label:'Retail Purchase',data:nuRetail,backgroundColor:C.blue,borderRadius:3},
+        {label:'Free-to-Play',data:nuF2P,backgroundColor:C.purple,borderRadius:3},
+        {label:'Cross-Promotion',data:nuCrossPromo,backgroundColor:C.gold,borderRadius:3},
+      ]
+    },
+    options:{
+      responsive:true, interaction:{intersect:false,mode:'index'},
+      scales:{
+        x:{stacked:true,grid:{display:false}},
+        y:{stacked:true,title:{display:true,text:'New Users (Millions)'},grid:{color:'rgba(255,255,255,.04)'}}
+      }
+    }
+  });
+
+  // 3. Game Pass Growth
+  mkChart('chartGPGrowth',{
+    type:'line',
+    data:{
+      labels:MONTHS,
+      datasets:[
+        {label:'Core',data:gpCore,borderColor:C.green,backgroundColor:alpha(C.green,.1),fill:false,borderWidth:2.5,tension:.3,pointRadius:3,pointBackgroundColor:C.green},
+        {label:'Standard',data:gpStandard,borderColor:C.blue,fill:false,borderWidth:2.5,tension:.3,pointRadius:3,pointBackgroundColor:C.blue},
+        {label:'Ultimate',data:gpUltimate,borderColor:C.purple,fill:false,borderWidth:2.5,tension:.3,pointRadius:3,pointBackgroundColor:C.purple},
+      ]
+    },
+    options:{
+      responsive:true, interaction:{intersect:false,mode:'index'},
+      scales:{
+        x:{grid:{display:false}},
+        y:{title:{display:true,text:'Subscribers (Millions)'},grid:{color:'rgba(255,255,255,.04)'},min:7}
+      },
+      plugins:{
+        annotation:{annotations:{
+          holiday:{type:'box',xMin:5,xMax:7,backgroundColor:'rgba(255,185,0,.06)',borderColor:'rgba(255,185,0,.2)',label:{display:true,content:'Holiday Season',position:'start',color:'#FFB900',font:{size:9}}}
+        }}
+      }
+    }
+  });
+
+  // 4. Platform Mix (100% stacked area)
+  const totals = MONTHS.map((_,i)=>mauConsole[i]+mauPC[i]+mauCloud[i]+mauMobile[i]);
+  mkChart('chartPlatformMix',{
+    type:'line',
+    data:{
+      labels:MONTHS,
+      datasets:[
+        {label:'Console',data:totals.map((t,i)=>(mauConsole[i]/t*100).toFixed(1)),fill:true,backgroundColor:alpha(C.green,.4),borderColor:C.green,borderWidth:1.5,tension:.3,pointRadius:0},
+        {label:'PC',data:totals.map((t,i)=>(mauPC[i]/t*100).toFixed(1)),fill:true,backgroundColor:alpha(C.blue,.4),borderColor:C.blue,borderWidth:1.5,tension:.3,pointRadius:0},
+        {label:'Cloud',data:totals.map((t,i)=>(mauCloud[i]/t*100).toFixed(1)),fill:true,backgroundColor:alpha(C.purple,.4),borderColor:C.purple,borderWidth:1.5,tension:.3,pointRadius:0},
+        {label:'Mobile',data:totals.map((t,i)=>(mauMobile[i]/t*100).toFixed(1)),fill:true,backgroundColor:alpha(C.gold,.4),borderColor:C.gold,borderWidth:1.5,tension:.3,pointRadius:0},
+      ]
+    },
+    options:{
+      responsive:true, interaction:{intersect:false,mode:'index'},
+      scales:{
+        x:{grid:{display:false}},
+        y:{stacked:true,max:100,title:{display:true,text:'% of MAU'},grid:{color:'rgba(255,255,255,.04)'},
+          ticks:{callback:v=>v+'%'}}
+      },
+      plugins:{tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y}%`}}}
+    }
+  });
+
+  // 5. Waterfall
+  const wfNet = wfNew.map((n,i)=>n+wfReturn[i]-wfChurned[i]);
+  mkChart('chartWaterfall',{
+    type:'bar',
+    data:{
+      labels:MONTHS,
+      datasets:[
+        {label:'New Users',data:wfNew,backgroundColor:C.green,borderRadius:3},
+        {label:'Returning',data:wfReturn,backgroundColor:C.blue,borderRadius:3},
+        {label:'Churned',data:wfChurned.map(v=>-v),backgroundColor:C.red,borderRadius:3},
+        {label:'Net Growth',data:wfNet,type:'line',borderColor:C.gold,backgroundColor:'transparent',borderWidth:2.5,pointRadius:4,pointBackgroundColor:C.gold,tension:.3,order:0},
+      ]
+    },
+    options:{
+      responsive:true, interaction:{intersect:false,mode:'index'},
+      scales:{
+        x:{stacked:true,grid:{display:false}},
+        y:{stacked:true,title:{display:true,text:'Users (Millions)'},grid:{color:'rgba(255,255,255,.04)'},
+          ticks:{callback:v=>v>0?'+'+v+'M':v+'M'}}
+      },
+      plugins:{tooltip:{callbacks:{label:ctx=>{
+        const v=ctx.parsed.y;
+        return `${ctx.dataset.label}: ${v>0?'+':''}${v.toFixed(1)}M`;
+      }}}}
+    }
+  });
+
+  // 6. Geographic
+  mkChart('chartGeo',{
+    type:'bar',
+    data:{
+      labels:MONTHS,
+      datasets:[
+        {label:'North America',data:geoNA,backgroundColor:C.green,borderRadius:2},
+        {label:'EMEA',data:geoEMEA,backgroundColor:C.blue,borderRadius:2},
+        {label:'APAC',data:geoAPAC,backgroundColor:C.purple,borderRadius:2},
+        {label:'LATAM',data:geoLATAM,backgroundColor:C.gold,borderRadius:2},
+      ]
+    },
+    options:{
+      responsive:true, interaction:{intersect:false,mode:'index'},
+      scales:{
+        x:{stacked:true,grid:{display:false}},
+        y:{stacked:true,title:{display:true,text:'MAU (Millions)'},grid:{color:'rgba(255,255,255,.04)'}}
+      }
+    }
+  });
+
+  // 7. CAC by channel
+  const cacGP   = [6.2,6.0,5.8,5.5,5.3,5.0,4.8,4.6,5.0,5.2,5.4,5.3];
+  const cacRet  = [12.5,12.0,11.8,11.5,11.0,10.5,10.0,9.8,10.5,11.0,11.5,11.2];
+  const cacF2P  = [2.1,2.0,1.9,1.8,1.7,1.6,1.5,1.4,1.6,1.7,1.8,1.7];
+  const cacXP   = [4.0,3.8,3.7,3.5,3.3,3.1,2.9,2.7,3.0,3.2,3.4,3.2];
+  mkChart('chartCAC',{
+    type:'line',
+    data:{
+      labels:MONTHS,
+      datasets:[
+        {label:'Game Pass Trial',data:cacGP,borderColor:C.green,borderWidth:2,tension:.3,pointRadius:2,fill:false},
+        {label:'Retail',data:cacRet,borderColor:C.blue,borderWidth:2,tension:.3,pointRadius:2,fill:false},
+        {label:'F2P',data:cacF2P,borderColor:C.purple,borderWidth:2,tension:.3,pointRadius:2,fill:false},
+        {label:'Cross-Promo',data:cacXP,borderColor:C.gold,borderWidth:2,tension:.3,pointRadius:2,fill:false},
+      ]
+    },
+    options:{
+      responsive:true, interaction:{intersect:false,mode:'index'},
+      scales:{
+        x:{grid:{display:false}},
+        y:{title:{display:true,text:'CAC ($)'},grid:{color:'rgba(255,255,255,.04)'},
+          ticks:{callback:v=>'$'+v}}
+      }
+    }
+  });
+
+  // 8. Multi-platform penetration
+  const mp1 = [58,57,56,55,54,52,51,50,49,48,47,46];
+  const mp2 = [26,27,27,28,28,29,29,30,30,31,31,32];
+  const mp3 = [12,12,13,13,14,14,15,15,16,16,17,17];
+  const mp4 = [4,4,4,4,4,5,5,5,5,5,5,5];
+  mkChart('chartMultiPlat',{
+    type:'bar',
+    data:{
+      labels:MONTHS,
+      datasets:[
+        {label:'1 Platform',data:mp1,backgroundColor:alpha(C.green,.7),borderRadius:2},
+        {label:'2 Platforms',data:mp2,backgroundColor:alpha(C.blue,.7),borderRadius:2},
+        {label:'3 Platforms',data:mp3,backgroundColor:alpha(C.purple,.7),borderRadius:2},
+        {label:'4+ Platforms',data:mp4,backgroundColor:alpha(C.gold,.7),borderRadius:2},
+      ]
+    },
+    options:{
+      responsive:true, interaction:{intersect:false,mode:'index'},
+      scales:{
+        x:{stacked:true,grid:{display:false}},
+        y:{stacked:true,max:100,title:{display:true,text:'% of MAU'},grid:{color:'rgba(255,255,255,.04)'},
+          ticks:{callback:v=>v+'%'}}
+      }
+    }
+  });
+
+  // 9. WAU Trend
+  const wau = [72,74,73,75,78,82,88,95,85,80,78,79];
+  mkChart('chartWAU',{
+    type:'line',
+    data:{
+      labels:MONTHS,
+      datasets:[{label:'WAU (M)',data:wau,borderColor:C.green,backgroundColor:makeGradient(document.getElementById('chartWAU').getContext('2d'),C.green),fill:true,borderWidth:2.5,tension:.4,pointRadius:3,pointBackgroundColor:C.green}]
+    },
+    options:{
+      responsive:true,
+      scales:{
+        x:{grid:{display:false}},
+        y:{title:{display:true,text:'WAU (Millions)'},grid:{color:'rgba(255,255,255,.04)'}}
+      },
+      plugins:{
+        annotation:{annotations:{
+          holiday:{type:'point',xValue:7,yValue:95,backgroundColor:C.gold,borderColor:C.gold,radius:6,
+            label:{display:true,content:'Holiday Peak',position:'top',color:C.gold,font:{size:10},yAdjust:-12}},
+        }}
+      }
+    }
+  });
+
+  // ===== ENGAGEMENT CHARTS =====
+  const dauMau = [32.8,33.0,33.2,33.5,33.8,34.0,34.2,34.5,34.3,34.1,34.0,34.2];
+  mkChart('chartDAUMAU',{
+    type:'line',
+    data:{labels:MONTHS,datasets:[{label:'DAU/MAU %',data:dauMau,borderColor:C.blue,fill:true,backgroundColor:alpha(C.blue,.15),borderWidth:2,tension:.3,pointRadius:3,pointBackgroundColor:C.blue}]},
+    options:{responsive:true,scales:{x:{grid:{display:false}},y:{title:{display:true,text:'DAU/MAU %'},grid:{color:'rgba(255,255,255,.04)'},min:30,ticks:{callback:v=>v+'%'}}}}
+  });
+
+  const mins = [48,49,50,50,51,52,53,54,53,52,52,52];
+  mkChart('chartMinutes',{
+    type:'bar',
+    data:{labels:MONTHS,datasets:[{label:'Avg Min/User/Day',data:mins,backgroundColor:alpha(C.orange,.7),borderRadius:4}]},
+    options:{responsive:true,scales:{x:{grid:{display:false}},y:{title:{display:true,text:'Minutes'},grid:{color:'rgba(255,255,255,.04)'}}}}
+  });
+
+  const sess = [16.0,16.3,16.5,16.8,17.0,17.5,17.8,18.2,18.0,17.8,18.0,18.3];
+  mkChart('chartSessions',{
+    type:'line',
+    data:{labels:MONTHS,datasets:[{label:'Sessions/User/Month',data:sess,borderColor:C.purple,fill:true,backgroundColor:alpha(C.purple,.12),borderWidth:2,tension:.3,pointRadius:3,pointBackgroundColor:C.purple}]},
+    options:{responsive:true,scales:{x:{grid:{display:false}},y:{title:{display:true,text:'Sessions'},grid:{color:'rgba(255,255,255,.04)'}}}}
+  });
+
+  const hrs = [1.8,1.85,1.9,1.92,1.95,2.1,2.15,2.3,2.1,2.0,1.95,2.0];
+  mkChart('chartHours',{
+    type:'bar',
+    data:{labels:MONTHS,datasets:[{label:'Total Hours (B)',data:hrs,backgroundColor:alpha(C.gold,.7),borderRadius:4}]},
+    options:{responsive:true,scales:{x:{grid:{display:false}},y:{title:{display:true,text:'Hours (Billions)'},grid:{color:'rgba(255,255,255,.04)'}}}}
+  });
+
+  // ===== MONETIZATION CHARTS =====
+  const revSub=[510,520,530,540,555,580,590,610,600,595,605,612];
+  const revMTX=[680,690,700,710,720,750,760,790,800,810,820,834];
+  const revDLC=[120,125,130,128,135,145,150,160,155,148,142,145];
+  const rev1P=[180,185,190,195,200,220,230,250,240,225,215,220];
+  mkChart('chartRevStream',{
+    type:'bar',
+    data:{labels:MONTHS,datasets:[
+      {label:'Subscriptions',data:revSub,backgroundColor:C.green,borderRadius:2},
+      {label:'MTX',data:revMTX,backgroundColor:C.blue,borderRadius:2},
+      {label:'DLC',data:revDLC,backgroundColor:C.purple,borderRadius:2},
+      {label:'First-Party Sales',data:rev1P,backgroundColor:C.gold,borderRadius:2},
+    ]},
+    options:{responsive:true,scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:'Revenue ($M)'},grid:{color:'rgba(255,255,255,.04)'}}}}
+  });
+
+  const arpu=[11.8,11.9,12.0,12.2,12.5,12.8,13.0,13.2,13.1,13.0,13.2,13.49];
+  mkChart('chartARPU',{
+    type:'line',
+    data:{labels:MONTHS,datasets:[{label:'ARPU ($)',data:arpu,borderColor:C.gold,fill:true,backgroundColor:alpha(C.gold,.12),borderWidth:2.5,tension:.3,pointRadius:3,pointBackgroundColor:C.gold}]},
+    options:{responsive:true,scales:{x:{grid:{display:false}},y:{title:{display:true,text:'ARPU ($)'},grid:{color:'rgba(255,255,255,.04)'},ticks:{callback:v=>'$'+v}}}}
+  });
+
+  mkChart('chartRevTitle',{
+    type:'bar',
+    data:{labels:['Call of Duty','Minecraft','Forza','Halo','Starfield'],datasets:[{label:'Monthly Revenue ($M)',data:[420,310,180,95,85],backgroundColor:[C.red,C.lgreen,C.orange,C.blue,C.purple],borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,scales:{x:{title:{display:true,text:'Revenue ($M)'},grid:{color:'rgba(255,255,255,.04)'}},y:{grid:{display:false}}},plugins:{legend:{display:false}}}
+  });
+
+  mkChart('chartSubMix',{
+    type:'doughnut',
+    data:{labels:['Core','Standard','Ultimate'],datasets:[{data:[35,28,37],backgroundColor:[C.green,C.blue,C.purple],borderWidth:0,hoverOffset:6}]},
+    options:{responsive:true,cutout:'65%',plugins:{legend:{position:'bottom'}}}
+  });
+
+  // ===== RETENTION CHARTS =====
+  const retMonths = ['M0','M1','M2','M3','M4','M5','M6','M7','M8','M9','M10','M11','M12'];
+  mkChart('chartRetCurve',{
+    type:'line',
+    data:{labels:retMonths,datasets:[
+      {label:'Q1 FY26 Cohort',data:[100,70,60,53,48,44,41,38,36,34,32,30,29],borderColor:C.green,borderWidth:2,tension:.3,pointRadius:2,fill:false},
+      {label:'Q2 FY26 Cohort',data:[100,68,58,51,46,42,39,36,34,32,30,null,null],borderColor:C.blue,borderWidth:2,tension:.3,pointRadius:2,fill:false},
+      {label:'Q3 FY26 Cohort',data:[100,72,63,55,50,46,43,null,null,null,null,null,null],borderColor:C.purple,borderWidth:2,tension:.3,pointRadius:2,fill:false},
+    ]},
+    options:{responsive:true,scales:{x:{grid:{display:false}},y:{title:{display:true,text:'Retention %'},grid:{color:'rgba(255,255,255,.04)'},max:100,ticks:{callback:v=>v+'%'}}}}
+  });
+
+  mkChart('chartRetPlat',{
+    type:'bar',
+    data:{labels:['M1','M3','M6','M12'],datasets:[
+      {label:'Console',data:[72,55,42,31],backgroundColor:C.green,borderRadius:3},
+      {label:'PC',data:[65,48,37,26],backgroundColor:C.blue,borderRadius:3},
+      {label:'Cloud',data:[58,40,30,20],backgroundColor:C.purple,borderRadius:3},
+      {label:'Mobile',data:[55,36,25,16],backgroundColor:C.gold,borderRadius:3},
+    ]},
+    options:{responsive:true,scales:{x:{grid:{display:false}},y:{title:{display:true,text:'Retention %'},grid:{color:'rgba(255,255,255,.04)'},max:100,ticks:{callback:v=>v+'%'}}}}
+  });
+
+  const churn=[5.2,5.1,5.0,4.8,4.7,4.5,4.4,4.3,4.5,4.6,4.7,4.6];
+  mkChart('chartChurn',{
+    type:'line',
+    data:{labels:MONTHS,datasets:[{label:'Monthly Churn %',data:churn,borderColor:C.red,fill:true,backgroundColor:alpha(C.red,.12),borderWidth:2,tension:.3,pointRadius:3,pointBackgroundColor:C.red}]},
+    options:{responsive:true,scales:{x:{grid:{display:false}},y:{title:{display:true,text:'Churn %'},grid:{color:'rgba(255,255,255,.04)'},ticks:{callback:v=>v+'%'}}}}
+  });
+
+  const react=[8.5,8.8,9.0,9.2,9.5,10.0,10.2,10.8,10.5,10.2,10.0,10.3];
+  mkChart('chartReact',{
+    type:'line',
+    data:{labels:MONTHS,datasets:[{label:'Reactivation Rate %',data:react,borderColor:C.lgreen,fill:true,backgroundColor:alpha(C.lgreen,.12),borderWidth:2,tension:.3,pointRadius:3,pointBackgroundColor:C.lgreen}]},
+    options:{responsive:true,scales:{x:{grid:{display:false}},y:{title:{display:true,text:'Reactivation %'},grid:{color:'rgba(255,255,255,.04)'},ticks:{callback:v=>v+'%'}}}}
+  });
+}
+
+// ===== GAME TAB BUILDER =====
+const GAME_DATA = {
+  gamepass: {
+    name:'Game Pass', color:C.bgreen, icon:'🎮',
+    kpis:[
+      {label:'Total Subscribers',value:'37.1M',delta:'▲ 14.8% YoY',dir:'up',tip:'Paid subscribers across all Game Pass tiers'},
+      {label:'Avg Titles Played/Sub/Mo',value:'4.7',delta:'▲ 12.0% YoY',dir:'up',tip:'Average unique titles played per subscriber per month'},
+      {label:'Monthly Sub Revenue',value:'$612M',delta:'▲ 18.4% YoY',dir:'up',tip:'Recurring subscription revenue'},
+      {label:'Trial → Paid Conversion',value:'42.3%',delta:'▲ 3.1pp YoY',dir:'up',tip:'% of trial users converting to paid within 30 days'},
+    ],
+    mau:[30.0,30.5,31.0,31.5,32.2,33.5,34.5,35.5,35.7,35.5,36.0,37.1],
+    mins:[62,63,64,65,66,68,70,72,71,69,68,70],
+    rev:[510,520,530,540,555,580,590,610,600,595,605,612],
+    ret:[100,78,68,60,55,51,48,45,43,41,39,38,36],
+  },
+  halo: {
+    name:'Halo', color:C.blue, icon:'🔫',
+    kpis:[
+      {label:'MAU',value:'8.2M',delta:'▲ 6.5% YoY',dir:'up',tip:'Halo franchise monthly active users'},
+      {label:'Avg Min/Day',value:'45',delta:'▲ 3.2% YoY',dir:'up',tip:'Average daily play time for Halo players'},
+      {label:'Monthly Revenue',value:'$95M',delta:'▲ 8.1% YoY',dir:'up',tip:'Halo franchise total monthly revenue'},
+      {label:'M1 Retention',value:'62.4%',delta:'▲ 1.8pp YoY',dir:'up',tip:'30-day new player retention'},
+    ],
+    mau:[7.0,7.1,7.2,7.4,7.5,7.8,8.0,8.3,8.1,7.9,8.0,8.2],
+    mins:[40,41,42,42,43,44,45,47,46,44,44,45],
+    rev:[78,80,82,85,87,90,92,96,94,91,93,95],
+    ret:[100,64,54,47,42,38,35,33,31,29,28,27,26],
+  },
+  forza: {
+    name:'Forza', color:C.orange, icon:'🏎️',
+    kpis:[
+      {label:'MAU',value:'12.5M',delta:'▲ 15.2% YoY',dir:'up',tip:'Forza Motorsport + Horizon monthly active users'},
+      {label:'Avg Min/Day',value:'38',delta:'▲ 5.1% YoY',dir:'up',tip:'Average daily play time'},
+      {label:'Monthly Revenue',value:'$180M',delta:'▲ 22.3% YoY',dir:'up',tip:'Forza franchise total monthly revenue'},
+      {label:'M1 Retention',value:'58.6%',delta:'▲ 2.4pp YoY',dir:'up',tip:'30-day new player retention'},
+    ],
+    mau:[9.5,9.8,10.0,10.3,10.5,11.0,11.5,12.0,12.2,12.0,12.2,12.5],
+    mins:[32,33,34,34,35,36,37,38,38,37,37,38],
+    rev:[130,135,140,145,150,160,170,180,178,172,175,180],
+    ret:[100,60,50,43,38,34,31,29,27,25,24,23,22],
+  },
+  cod: {
+    name:'Call of Duty', color:C.red, icon:'💥',
+    kpis:[
+      {label:'MAU',value:'42.8M',delta:'▲ 8.9% YoY',dir:'up',tip:'CoD franchise MAU across all modes'},
+      {label:'Avg Min/Day',value:'58',delta:'▲ 2.1% YoY',dir:'up',tip:'Average daily play time'},
+      {label:'Monthly Revenue',value:'$420M',delta:'▲ 11.5% YoY',dir:'up',tip:'CoD franchise total monthly revenue incl. Warzone MTX'},
+      {label:'M1 Retention',value:'65.8%',delta:'▲ 1.2pp YoY',dir:'up',tip:'30-day new player retention'},
+    ],
+    mau:[36.0,37.0,38.0,39.0,40.0,41.0,42.0,43.5,43.0,42.5,42.0,42.8],
+    mins:[52,53,54,55,55,56,57,59,58,57,57,58],
+    rev:[340,350,360,370,380,395,400,420,415,408,412,420],
+    ret:[100,67,57,50,45,41,38,36,34,32,31,30,29],
+  },
+  minecraft: {
+    name:'Minecraft', color:C.lgreen, icon:'⛏️',
+    kpis:[
+      {label:'MAU',value:'166M',delta:'▲ 5.2% YoY',dir:'up',tip:'Minecraft MAU across all platforms (Java, Bedrock, Education)'},
+      {label:'Avg Min/Day',value:'42',delta:'▲ 3.8% YoY',dir:'up',tip:'Average daily play time'},
+      {label:'Monthly Revenue',value:'$310M',delta:'▲ 7.4% YoY',dir:'up',tip:'Minecraft total monthly revenue incl. Marketplace'},
+      {label:'M1 Retention',value:'72.1%',delta:'▲ 0.9pp YoY',dir:'up',tip:'30-day new player retention'},
+    ],
+    mau:[150,152,154,156,158,160,162,165,164,163,164,166],
+    mins:[38,39,39,40,40,41,41,42,42,41,41,42],
+    rev:[260,265,270,275,280,290,295,305,300,298,305,310],
+    ret:[100,73,65,58,54,50,47,45,43,41,40,39,38],
+  },
+  sot: {
+    name:'Sea of Thieves', color:C.gold, icon:'🏴‍☠️',
+    kpis:[
+      {label:'MAU',value:'5.8M',delta:'▲ 28.3% YoY',dir:'up',tip:'Sea of Thieves MAU (boosted by PS5 launch)'},
+      {label:'Avg Min/Day',value:'55',delta:'▲ 8.2% YoY',dir:'up',tip:'Average daily play time'},
+      {label:'Monthly Revenue',value:'$48M',delta:'▲ 35.1% YoY',dir:'up',tip:'Total monthly revenue incl. PS5 sales'},
+      {label:'M1 Retention',value:'54.2%',delta:'▲ 4.8pp YoY',dir:'up',tip:'30-day new player retention'},
+    ],
+    mau:[3.8,4.0,4.2,4.5,4.8,5.0,5.2,5.5,5.6,5.5,5.6,5.8],
+    mins:[46,47,48,49,50,52,53,55,55,54,54,55],
+    rev:[28,30,32,35,38,40,42,45,46,45,47,48],
+    ret:[100,56,45,38,33,29,26,24,22,21,20,19,18],
+  },
+  starfield: {
+    name:'Starfield', color:C.purple, icon:'🚀',
+    kpis:[
+      {label:'MAU',value:'6.4M',delta:'▲ 12.7% YoY',dir:'up',tip:'Starfield MAU (boosted by Shattered Space DLC)'},
+      {label:'Avg Min/Day',value:'68',delta:'▲ 5.5% YoY',dir:'up',tip:'Average daily play time — highest session depth'},
+      {label:'Monthly Revenue',value:'$85M',delta:'▲ 18.9% YoY',dir:'up',tip:'Starfield total monthly revenue incl. Creation Club'},
+      {label:'M1 Retention',value:'58.9%',delta:'▲ 3.2pp YoY',dir:'up',tip:'30-day new player retention'},
+    ],
+    mau:[5.0,5.2,5.4,5.6,5.8,6.0,6.1,6.3,6.3,6.2,6.3,6.4],
+    mins:[60,61,62,63,64,65,66,68,68,67,67,68],
+    rev:[60,62,65,68,72,78,80,85,84,82,83,85],
+    ret:[100,60,51,44,40,36,33,31,29,28,27,26,25],
+  },
+};
+
+function buildGameTab(key) {
+  const g = GAME_DATA[key];
+  const container = document.getElementById('tab-'+key);
+  if (!container || container.dataset.built) return;
+  container.dataset.built = '1';
+
+  const retLabels = ['M0','M1','M2','M3','M4','M5','M6','M7','M8','M9','M10','M11','M12'];
+
+  container.innerHTML = `
+    <div class="section-header"><h2>${g.icon} ${g.name} — Dashboard</h2><span class="badge">Illustrative Data</span></div>
+    <div class="kpi-row">
+      ${g.kpis.map((k,i)=>`
+        <div class="kpi-card">
+          <div class="kpi-accent" style="background:${i===0?g.color:Object.values(C)[i%8]}"></div>
+          <div class="kpi-label">${k.label} <span class="info-tip" data-tip="${k.tip}">?</span></div>
+          <div class="kpi-value" style="color:${i===0?g.color:Object.values(C)[i%8]}">${k.value}</div>
+          <div class="kpi-delta ${k.dir}">${k.delta}</div>
+        </div>`).join('')}
+    </div>
+
+    <div class="section-header"><h2>📈 Growth</h2></div>
+    <div class="chart-grid cols-2">
+      <div class="chart-card">
+        <h3>MAU Trend</h3><div class="chart-sub">Illustrative Data</div>
+        <div class="chart-wrap"><canvas id="chart-${key}-mau"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>New User Activations</h3><div class="chart-sub">Illustrative Data</div>
+        <div class="chart-wrap"><canvas id="chart-${key}-newusers"></canvas></div>
+      </div>
+    </div>
+
+    <div class="section-header"><h2>🎮 Engagement</h2></div>
+    <div class="chart-grid cols-2">
+      <div class="chart-card">
+        <h3>Avg Minutes per User per Day</h3><div class="chart-sub">Illustrative Data</div>
+        <div class="chart-wrap"><canvas id="chart-${key}-mins"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Sessions per User per Month</h3><div class="chart-sub">Illustrative Data</div>
+        <div class="chart-wrap"><canvas id="chart-${key}-sess"></canvas></div>
+      </div>
+    </div>
+
+    <div class="section-header"><h2>💰 Monetization</h2></div>
+    <div class="chart-grid cols-2">
+      <div class="chart-card">
+        <h3>Monthly Revenue</h3><div class="chart-sub">Illustrative Data</div>
+        <div class="chart-wrap"><canvas id="chart-${key}-rev"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>ARPU</h3><div class="chart-sub">Illustrative Data</div>
+        <div class="chart-wrap"><canvas id="chart-${key}-arpu"></canvas></div>
+      </div>
+    </div>
+
+    <div class="section-header"><h2>🔄 Retention</h2></div>
+    <div class="chart-grid cols-2">
+      <div class="chart-card">
+        <h3>Retention Curve</h3><div class="chart-sub">Illustrative Data</div>
+        <div class="chart-wrap"><canvas id="chart-${key}-ret"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Churn Rate</h3><div class="chart-sub">Illustrative Data</div>
+        <div class="chart-wrap"><canvas id="chart-${key}-churn"></canvas></div>
+      </div>
+    </div>
+  `;
+
+  // Build charts
+  mkChart(`chart-${key}-mau`,{
+    type:'line',
+    data:{labels:MONTHS,datasets:[{label:'MAU (M)',data:g.mau,borderColor:g.color,fill:true,backgroundColor:alpha(g.color,.15),borderWidth:2.5,tension:.3,pointRadius:3,pointBackgroundColor:g.color}]},
+    options:{responsive:true,scales:{x:{grid:{display:false}},y:{title:{display:true,text:'MAU (M)'},grid:{color:'rgba(255,255,255,.04)'}}}}
+  });
+
+  const nuData = g.mau.map((v,i)=>i===0?null:Math.max(0,(v-g.mau[i-1])*1.8+Math.random()*.5).toFixed(2)).slice(1);
+  mkChart(`chart-${key}-newusers`,{
+    type:'bar',
+    data:{labels:MONTHS.slice(1),datasets:[{label:'New Users (M)',data:nuData,backgroundColor:alpha(g.color,.65),borderRadius:4}]},
+    options:{responsive:true,scales:{x:{grid:{display:false}},y:{title:{display:true,text:'New Users (M)'},grid:{color:'rgba(255,255,255,.04)'}}}}
+  });
+
+  mkChart(`chart-${key}-mins`,{
+    type:'bar',
+    data:{labels:MONTHS,datasets:[{label:'Avg Min/Day',data:g.mins,backgroundColor:alpha(C.orange,.65),borderRadius:4}]},
+    options:{responsive:true,scales:{x:{grid:{display:false}},y:{title:{display:true,text:'Minutes'},grid:{color:'rgba(255,255,255,.04)'}}}}
+  });
+
+  const sessData = g.mins.map(m=>(m/3.2+Math.random()*2).toFixed(1));
+  mkChart(`chart-${key}-sess`,{
+    type:'line',
+    data:{labels:MONTHS,datasets:[{label:'Sessions/User/Mo',data:sessData,borderColor:C.purple,fill:true,backgroundColor:alpha(C.purple,.12),borderWidth:2,tension:.3,pointRadius:3,pointBackgroundColor:C.purple}]},
+    options:{responsive:true,scales:{x:{grid:{display:false}},y:{title:{display:true,text:'Sessions'},grid:{color:'rgba(255,255,255,.04)'}}}}
+  });
+
+  mkChart(`chart-${key}-rev`,{
+    type:'line',
+    data:{labels:MONTHS,datasets:[{label:'Revenue ($M)',data:g.rev,borderColor:C.gold,fill:true,backgroundColor:alpha(C.gold,.12),borderWidth:2.5,tension:.3,pointRadius:3,pointBackgroundColor:C.gold}]},
+    options:{responsive:true,scales:{x:{grid:{display:false}},y:{title:{display:true,text:'Revenue ($M)'},grid:{color:'rgba(255,255,255,.04)'},ticks:{callback:v=>'$'+v+'M'}}}}
+  });
+
+  const arpuData = g.rev.map((r,i)=>(r/g.mau[i]).toFixed(2));
+  mkChart(`chart-${key}-arpu`,{
+    type:'line',
+    data:{labels:MONTHS,datasets:[{label:'ARPU ($)',data:arpuData,borderColor:C.lgreen,fill:true,backgroundColor:alpha(C.lgreen,.12),borderWidth:2,tension:.3,pointRadius:3,pointBackgroundColor:C.lgreen}]},
+    options:{responsive:true,scales:{x:{grid:{display:false}},y:{title:{display:true,text:'ARPU ($)'},grid:{color:'rgba(255,255,255,.04)'},ticks:{callback:v=>'$'+v}}}}
+  });
+
+  mkChart(`chart-${key}-ret`,{
+    type:'line',
+    data:{labels:retLabels,datasets:[{label:'Retention %',data:g.ret,borderColor:g.color,fill:true,backgroundColor:alpha(g.color,.12),borderWidth:2.5,tension:.3,pointRadius:3,pointBackgroundColor:g.color}]},
+    options:{responsive:true,scales:{x:{grid:{display:false}},y:{title:{display:true,text:'Retention %'},grid:{color:'rgba(255,255,255,.04)'},max:100,ticks:{callback:v=>v+'%'}}}}
+  });
+
+  const churnData = g.ret.slice(0,-1).map((v,i)=>((v-g.ret[i+1])/v*100).toFixed(1));
+  mkChart(`chart-${key}-churn`,{
+    type:'bar',
+    data:{labels:retLabels.slice(1),datasets:[{label:'Churn % (period)',data:churnData,backgroundColor:alpha(C.red,.6),borderRadius:3}]},
+    options:{responsive:true,scales:{x:{grid:{display:false}},y:{title:{display:true,text:'Churn %'},grid:{color:'rgba(255,255,255,.04)'},ticks:{callback:v=>v+'%'}}}}
+  });
+}
+
+// ===== TAB SWITCHING =====
+function switchTab(tab) {
+  // Update tab buttons
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>{
+    const map = {'Rolled Up':'rolled-up','Game Pass':'gamepass','Halo':'halo','Forza':'forza','Call of Duty':'cod','Minecraft':'minecraft','Sea of Thieves':'sot','Starfield':'starfield'};
+    if (map[b.textContent]===tab) b.classList.add('active');
+  });
+
+  // Update sidebar
+  document.querySelectorAll('.sidebar .nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.sidebar .nav-item').forEach(n=>{
+    const map = {'Rolled Up (Total Xbox)':'rolled-up','Game Pass':'gamepass','Halo':'halo','Forza':'forza','Call of Duty':'cod','Minecraft':'minecraft','Sea of Thieves':'sot','Starfield':'starfield'};
+    if (map[n.textContent.trim()]===tab) n.classList.add('active');
+  });
+
+  // Show/hide
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  const el = document.getElementById('tab-'+tab);
+  if (el) { el.classList.add('active'); }
+
+  // Build game tab charts on first view
+  if (tab !== 'rolled-up' && GAME_DATA[tab]) {
+    buildGameTab(tab);
+  }
+}
+
+function scrollToSection(id) {
+  switchTab('rolled-up');
+  setTimeout(()=>{
+    const el = document.getElementById('section-'+id);
+    if (el) el.scrollIntoView({behavior:'smooth',block:'start'});
+  },100);
+}
+
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', ()=>{
+  buildRolledUpCharts();
+});
+</script>
+</body>
+</html>

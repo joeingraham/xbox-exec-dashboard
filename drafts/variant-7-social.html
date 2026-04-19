@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Xbox Executive Dashboard — Social &amp; Multiplayer Engagement</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#0D1117;--card:#161B22;--border:#21262D;--text:#E6EDF3;--text2:#8B949E;--text3:#6E7681;
+--green:#107C10;--green2:#10893E;--lime:#7FBA00;--blue:#0078D4;--purple:#7B68EE;
+--orange:#FF8C00;--red:#E81123;--gold:#FFB900;--teal:#2EA043;
+}
+html{font-size:14px}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;min-height:100vh}
+/* Header */
+.header{position:fixed;top:0;left:0;right:0;height:56px;background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;z-index:1000;gap:16px}
+.header .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1.1rem;white-space:nowrap}
+.header .logo svg{width:28px;height:28px}
+.header .badge{background:var(--purple);color:#fff;font-size:.65rem;padding:2px 8px;border-radius:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.header .period{margin-left:auto;color:var(--text2);font-size:.8rem}
+/* Sidebar */
+.sidebar{position:fixed;top:56px;left:0;bottom:0;width:200px;background:var(--card);border-right:1px solid var(--border);padding:12px 0;z-index:999;overflow-y:auto}
+.sidebar .nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;color:var(--text2);cursor:pointer;font-size:.82rem;font-weight:500;transition:all .15s;border-left:3px solid transparent}
+.sidebar .nav-item:hover{background:rgba(255,255,255,.04);color:var(--text)}
+.sidebar .nav-item.active{color:var(--green2);border-left-color:var(--green2);background:rgba(16,137,62,.08)}
+.sidebar .nav-label{padding:20px 20px 6px;font-size:.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--text3);font-weight:600}
+/* Main */
+.main{margin-left:200px;margin-top:56px;padding:24px;min-height:calc(100vh - 56px)}
+.tab-content{display:none}
+.tab-content.active{display:block}
+/* Grid */
+.grid{display:grid;gap:16px;margin-bottom:16px}
+.g1{grid-template-columns:1fr}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:1fr 1fr 1fr}
+.g4{grid-template-columns:1fr 1fr 1fr 1fr}
+.g5{grid-template-columns:repeat(5,1fr)}
+.g2-1{grid-template-columns:2fr 1fr}
+.g1-2{grid-template-columns:1fr 2fr}
+/* Cards */
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;position:relative}
+.card-title{font-size:.75rem;text-transform:uppercase;letter-spacing:.8px;color:var(--text2);font-weight:600;margin-bottom:4px}
+.card-value{font-size:1.9rem;font-weight:700;line-height:1.2}
+.card-sub{font-size:.75rem;color:var(--text2);margin-top:2px}
+.card-delta{font-size:.75rem;font-weight:600;margin-top:4px}
+.card-delta.up{color:var(--green2)}
+.card-delta.down{color:var(--red)}
+.card-delta.neutral{color:var(--gold)}
+.chart-container{position:relative;width:100%;height:300px}
+.chart-container.tall{height:380px}
+.chart-container.short{height:240px}
+.section-title{font-size:1rem;font-weight:700;margin:24px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.section-title .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.section-title:first-child{margin-top:0}
+/* Tables */
+.data-table{width:100%;border-collapse:collapse;font-size:.78rem}
+.data-table th{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text2);font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.5px}
+.data-table td{padding:7px 10px;border-bottom:1px solid rgba(33,38,45,.5)}
+.data-table tr:hover td{background:rgba(255,255,255,.02)}
+.bar-inline{height:6px;border-radius:3px;background:var(--border);position:relative;min-width:60px}
+.bar-inline .fill{height:100%;border-radius:3px;position:absolute;left:0;top:0}
+/* Responsive */
+@media(max-width:1200px){.g4{grid-template-columns:1fr 1fr}.g5{grid-template-columns:1fr 1fr 1fr}.g3{grid-template-columns:1fr 1fr}}
+@media(max-width:900px){.sidebar{display:none}.main{margin-left:0}.g2,.g2-1,.g1-2{grid-template-columns:1fr}}
+@media(max-width:600px){.g3,.g4,.g5{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <svg viewBox="0 0 24 24" fill="var(--green2)"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 2c1.94 0 3.753.558 5.29 1.52-.23.18-.56.46-.93.84C14.79 5.93 12.58 9.04 11.1 12.3c-1.4 3.08-2.3 6.24-2.6 8.16-.1.6-.16 1.05-.18 1.32A9.96 9.96 0 0 1 2 12C2 6.477 6.477 2 12 2zm7.8 3.4c.5.5.8.85 1 1.1A9.93 9.93 0 0 1 22 12c0 4.04-2.4 7.52-5.85 9.1-.14-.46-.4-1.2-.8-2.18-1-2.5-2.8-5.9-5.2-8.8-1.5-1.8-3-3.2-4.2-4.1-.5-.38-.9-.64-1.15-.78A9.94 9.94 0 0 1 12 2c2.9 0 5.5 1.23 7.32 3.2l.48.2z"/></svg>
+    Xbox Executive Dashboard
+  </div>
+  <span class="badge">Social &amp; Multiplayer</span>
+  <span class="period">May 2025 — April 2026 · Variant 7</span>
+</div>
+
+<div class="sidebar" id="sidebar"></div>
+
+<div class="main" id="main"></div>
+
+<script>
+// ─── DATA ENGINE ──────────────────────────────────────────────────────
+const MONTHS = ['May 25','Jun 25','Jul 25','Aug 25','Sep 25','Oct 25','Nov 25','Dec 25','Jan 26','Feb 26','Mar 26','Apr 26'];
+const COLORS = {green:'#107C10',green2:'#10893E',lime:'#7FBA00',blue:'#0078D4',purple:'#7B68EE',orange:'#FF8C00',red:'#E81123',gold:'#FFB900',teal:'#2EA043',pink:'#E040FB',cyan:'#00BCD4'};
+const C = COLORS;
+
+function rng(base,growth,noise=.02){return MONTHS.map((_,i)=>+(base*(1+growth)**i*(1+(Math.random()-.5)*noise)).toFixed(2))}
+function rngSeasonal(base,growth,noise=.02,peaks={}){return MONTHS.map((_,i)=>{let m=(5+i)%12;let s=peaks[m]||1;return +(base*s*(1+growth)**i*(1+(Math.random()-.5)*noise)).toFixed(2)})}
+function sum(a){return a.reduce((s,v)=>s+v,0)}
+function last(a){return a[a.length-1]}
+function delta(a){let l=last(a),f=a[0];return ((l-f)/f*100).toFixed(1)}
+function fmt(n,d=1){if(n>=1e9)return (n/1e9).toFixed(d)+'B';if(n>=1e6)return (n/1e6).toFixed(d)+'M';if(n>=1e3)return (n/1e3).toFixed(d)+'K';return n.toFixed?n.toFixed(d):n}
+
+const seasonPeaks = {6:1.08,7:1.12,10:1.06,11:1.18,0:1.04};
+
+// ─── TOTAL XBOX DATA ──────────────────────────────────────────────────
+const TX = {
+  mau: rngSeasonal(135e6,.008,.015,seasonPeaks),
+  dau: rngSeasonal(48e6,.009,.02,seasonPeaks),
+  newUsers: rngSeasonal(4.2e6,.006,.03,seasonPeaks),
+  minutes: rngSeasonal(12.8e9,.01,.02,seasonPeaks),
+  revenue: rngSeasonal(1.95e9,.012,.02,{10:1.08,11:1.25,0:1.05}),
+  arpu: rngSeasonal(14.4,.004,.01),
+  d1: rngSeasonal(62,.001,.005),
+  d7: rngSeasonal(41,.001,.005),
+  d30: rngSeasonal(28,0,.005),
+
+  mpPct: rng(58,.002,.01),
+  soloPct: null,
+  partySolo: [38,37,36,35,34,33,33,31,32,32,31,30],
+  partyDuo: [28,28,29,29,29,30,30,31,30,30,31,31],
+  party34: [22,23,23,23,24,24,24,25,25,25,25,25],
+  party5p: [12,12,12,13,13,13,13,13,13,13,13,14],
+
+  friendsDist: {labels:['0-5','6-20','21-50','51-100','101-200','200+'],data:[8,18,28,24,14,8]},
+
+  lfg: rng(5.2e6,.012,.03),
+  clubs: rng(3.8e6,.008,.03),
+  invites: rng(18.4e6,.015,.02),
+  partyChat: rng(22.1e6,.014,.02),
+
+  crossPlatPct: rng(34,.008,.01),
+
+  screenshots: rng(42e6,.018,.03),
+  clips: rng(28e6,.022,.03),
+  shares: rng(15e6,.025,.03),
+
+  eventParticipation: rng(8.2e6,.015,.03),
+  eventEngRate: rng(18.5,.003,.01),
+
+  voiceChatPct: rng(31,.005,.01),
+
+  pgcWorlds: rng(2.8e6,.02,.03),
+  pgcLiveries: rng(1.1e6,.018,.03),
+  pgcMaps: rng(0.9e6,.015,.03),
+  pgcTotal: null,
+
+  twitchHours: rng(185e6,.015,.03),
+  ytHours: rng(220e6,.018,.03),
+  streamerPct: rng(4.2,.006,.01),
+};
+TX.soloPct = TX.mpPct.map(v=>+(100-v).toFixed(2));
+TX.pgcTotal = TX.pgcWorlds.map((_,i)=>TX.pgcWorlds[i]+TX.pgcLiveries[i]+TX.pgcMaps[i]);
+
+// ─── GAME DATA ────────────────────────────────────────────────────────
+const GAMES = {
+  gamepass: {
+    label:'Game Pass',color:C.green2,
+    mau:rng(38e6,.012,.02),dau:rng(14.5e6,.013,.02),revenue:rng(680e6,.014,.02),
+    arpu:rng(17.9,.003,.01),d30:rng(72,.002,.005),minutes:rng(4.8e9,.012,.02),
+    newSubs:rng(2.1e6,.008,.03),churn:rng(5.8,-.002,.01),
+    mpPct:rng(62,.003,.01),crossPlatPct:rng(38,.007,.01),
+    voiceChatPct:rng(35,.004,.01),clipsShared:rng(8.2e6,.02,.03),
+    socialNote:'Game Pass titles drive 42% higher multiplayer engagement vs. non-GP titles. Cloud gaming cross-play sessions grew 28% YoY.'
+  },
+  halo: {
+    label:'Halo Infinite',color:C.teal,
+    mau:rng(6.8e6,.005,.03),dau:rng(1.9e6,.004,.03),revenue:rng(38e6,.006,.02),
+    arpu:rng(5.6,.002,.01),d30:rng(34,.001,.005),minutes:rng(520e6,.005,.02),
+    rankPop:rng(2.1e6,.008,.03),customGames:rng(680e3,.012,.03),forgeCreations:rng(145e3,.025,.03),
+    mpPct:rng(82,.002,.01),crossPlatPct:rng(42,.006,.01),
+    voiceChatPct:rng(44,.003,.01),clipsShared:rng(3.1e6,.015,.03),
+    avgPartySize:rng(2.8,.003,.01),competitiveQueuePct:rng(38,.004,.01),
+    socialNote:'Forge ecosystem driving strong UGC engagement. Custom game sessions up 18% after Forge content update. Competitive party queuing peaks at weekends.'
+  },
+  forza: {
+    label:'Forza (Horizon/Motorsport)',color:C.blue,
+    mau:rng(9.2e6,.01,.02),dau:rng(2.8e6,.011,.02),revenue:rng(62e6,.012,.02),
+    arpu:rng(6.7,.003,.01),d30:rng(38,.002,.005),minutes:rng(780e6,.01,.02),
+    liveriesCreated:rng(380e3,.02,.03),liveriesDownloaded:rng(4.2e6,.022,.03),
+    eventLabBlueprints:rng(95e3,.018,.03),convoySize:rng(3.4,.005,.01),
+    mpPct:rng(52,.004,.01),crossPlatPct:rng(45,.008,.01),
+    voiceChatPct:rng(22,.004,.01),clipsShared:rng(4.8e6,.025,.03),photoShares:rng(6.1e6,.028,.03),
+    socialNote:'Photo mode is Forza\'s #1 social driver — 6M+ shares/mo. Livery marketplace downloads grew 31% YoY. Convoy multiplayer has highest session length of any social mode.'
+  },
+  cod: {
+    label:'Call of Duty',color:C.orange,
+    mau:rng(42e6,.008,.02),dau:rng(18e6,.009,.02),revenue:rng(420e6,.01,.02),
+    arpu:rng(10,.003,.01),d30:rng(32,.001,.005),minutes:rng(3.8e9,.009,.02),
+    warzoneMAU:rng(28e6,.007,.02),rankedPop:rng(8.5e6,.012,.03),clanMembers:rng(15e6,.01,.03),
+    mpPct:rng(88,.001,.01),crossPlatPct:rng(52,.006,.01),
+    voiceChatPct:rng(48,.003,.01),clipsShared:rng(12e6,.018,.03),
+    avgSquadSize:rng(3.1,.002,.01),
+    socialNote:'Highest cross-platform MP rate in portfolio at 52%. Clan system adoption reached 36% of MAU. Warzone proximity chat drives viral clip creation.'
+  },
+  minecraft: {
+    label:'Minecraft',color:C.lime,
+    mau:rng(52e6,.012,.02),dau:rng(16e6,.013,.02),revenue:rng(180e6,.015,.02),
+    arpu:rng(3.5,.003,.01),d30:rng(45,.002,.005),minutes:rng(4.2e9,.014,.02),
+    realmsSubs:rng(4.8e6,.018,.03),worldsShared:rng(2.8e6,.02,.03),
+    marketplaceCreators:rng(12e3,.015,.03),bedrockServers:rng(850e3,.012,.03),
+    mpPct:rng(48,.005,.01),crossPlatPct:rng(58,.007,.01),
+    voiceChatPct:rng(28,.004,.01),clipsShared:rng(5.5e6,.02,.03),
+    avgRealmSize:rng(4.2,.005,.01),
+    socialNote:'Highest cross-platform rate (58%) — Bedrock edition enables mobile+console+PC play. Realms subscriptions are the primary social anchor. Marketplace creator economy growing 22% YoY.'
+  },
+  seaofthieves: {
+    label:'Sea of Thieves',color:C.cyan,
+    mau:rng(3.8e6,.008,.03),dau:rng(0.95e6,.007,.03),revenue:rng(18e6,.01,.02),
+    arpu:rng(4.7,.003,.01),d30:rng(30,.001,.005),minutes:rng(310e6,.009,.02),
+    crewSessions:rng(1.8e6,.012,.03),avgCrewSize:rng(2.9,.003,.01),
+    allianceFormations:rng(420e3,.015,.03),pirateEmporium:rng(680e3,.01,.03),
+    mpPct:rng(76,.003,.01),crossPlatPct:rng(40,.006,.01),
+    voiceChatPct:rng(52,.004,.01),clipsShared:rng(1.2e6,.022,.03),
+    socialNote:'Highest voice chat rate (52%) — crew coordination is essential. Alliance system drives cross-crew social play. PS5 launch expanded cross-platform pool significantly.'
+  },
+  starfield: {
+    label:'Starfield',color:C.purple,
+    mau:rng(5.2e6,.006,.03),dau:rng(1.4e6,.005,.03),revenue:rng(32e6,.008,.02),
+    arpu:rng(6.2,.003,.01),d30:rng(26,.001,.005),minutes:rng(480e6,.007,.02),
+    modsInstalled:rng(8.5e6,.025,.03),modsCreated:rng(42e3,.022,.03),
+    photoShares:rng(1.8e6,.02,.03),creationKitUsers:rng(28e3,.018,.03),
+    mpPct:rng(0,0,0),crossPlatPct:rng(0,0,0),
+    voiceChatPct:rng(0,0,0),clipsShared:rng(2.2e6,.018,.03),
+    socialNote:'Single-player title with strong social sharing. Mod ecosystem is primary community driver — 8.5M+ installs/mo. Creation Kit adoption growing 22% YoY. Photo mode shares rival MP titles.'
+  }
+};
+
+// ─── CHART DEFAULTS ───────────────────────────────────────────────────
+Chart.defaults.color = '#8B949E';
+Chart.defaults.borderColor = 'rgba(33,38,45,.6)';
+Chart.defaults.font.family = 'Inter';
+Chart.defaults.font.size = 11;
+Chart.defaults.plugins.legend.labels.usePointStyle = true;
+Chart.defaults.plugins.legend.labels.pointStyleWidth = 8;
+Chart.defaults.plugins.legend.labels.boxHeight = 7;
+Chart.defaults.plugins.tooltip.backgroundColor = '#1C2128';
+Chart.defaults.plugins.tooltip.borderColor = '#30363D';
+Chart.defaults.plugins.tooltip.borderWidth = 1;
+Chart.defaults.plugins.tooltip.cornerRadius = 6;
+Chart.defaults.plugins.tooltip.padding = 10;
+Chart.defaults.elements.point.radius = 2;
+Chart.defaults.elements.point.hoverRadius = 5;
+Chart.defaults.elements.line.tension = .35;
+Chart.defaults.elements.line.borderWidth = 2;
+Chart.defaults.elements.bar.borderRadius = 4;
+Chart.defaults.scale.grid = {color:'rgba(33,38,45,.5)'};
+
+const chartInstances = [];
+function destroyCharts(){chartInstances.forEach(c=>c.destroy());chartInstances.length=0}
+function makeChart(id,cfg){
+  const el = document.getElementById(id);
+  if(!el) return;
+  cfg.options = cfg.options||{};
+  cfg.options.responsive = true;
+  cfg.options.maintainAspectRatio = false;
+  cfg.plugins = cfg.plugins||[];
+  const c = new Chart(el,cfg);
+  chartInstances.push(c);
+  return c;
+}
+
+// ─── KPI CARD HELPER ──────────────────────────────────────────────────
+function kpi(title,value,sub,d,cls=''){
+  const dc = d>0?'up':d<0?'down':'neutral';
+  const arrow = d>0?'▲':d<0?'▼':'—';
+  return `<div class="card ${cls}"><div class="card-title">${title}</div><div class="card-value">${value}</div><div class="card-sub">${sub}</div><div class="card-delta ${dc}">${arrow} ${Math.abs(d)}% vs 12mo ago</div></div>`;
+}
+
+// ─── SIDEBAR ──────────────────────────────────────────────────────────
+const TABS = [
+  {id:'total',label:'Total Xbox',icon:'🎮'},
+  {id:'gamepass',label:'Game Pass',icon:'🟢'},
+  {id:'halo',label:'Halo',icon:'⚔️'},
+  {id:'forza',label:'Forza',icon:'🏎️'},
+  {id:'cod',label:'Call of Duty',icon:'🔫'},
+  {id:'minecraft',label:'Minecraft',icon:'⛏️'},
+  {id:'seaofthieves',label:'Sea of Thieves',icon:'🏴‍☠️'},
+  {id:'starfield',label:'Starfield',icon:'🚀'},
+];
+const sidebar = document.getElementById('sidebar');
+sidebar.innerHTML = '<div class="nav-label">Dashboard</div>' +
+  TABS.map(t=>`<div class="nav-item${t.id==='total'?' active':''}" data-tab="${t.id}">${t.icon} ${t.label}</div>`).join('');
+
+sidebar.addEventListener('click',e=>{
+  const item = e.target.closest('.nav-item');
+  if(!item) return;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  item.classList.add('active');
+  showTab(item.dataset.tab);
+});
+
+function showTab(id){
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  const el = document.getElementById('tab-'+id);
+  if(el){el.classList.add('active');return}
+  // Build tab on first visit
+  const div = document.createElement('div');
+  div.className='tab-content active';
+  div.id='tab-'+id;
+  document.getElementById('main').appendChild(div);
+  destroyCharts();
+  if(id==='total') buildTotalTab(div);
+  else buildGameTab(div,id);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// TOTAL XBOX TAB
+// ═══════════════════════════════════════════════════════════════════════
+function buildTotalTab(el){
+  const d = TX;
+  el.innerHTML = `
+  <!-- KPI Row -->
+  <div class="section-title" style="margin-top:0"><span class="dot" style="background:${C.green2}"></span>Social & Multiplayer Overview</div>
+  <div class="grid g5">
+    ${kpi('Xbox MAU',fmt(last(d.mau)),'Monthly Active Users',+delta(d.mau))}
+    ${kpi('Multiplayer %',last(d.mpPct).toFixed(1)+'%','Of total play sessions',+delta(d.mpPct))}
+    ${kpi('Cross-Platform MP',last(d.crossPlatPct).toFixed(1)+'%','Of MP sessions cross-play',+delta(d.crossPlatPct))}
+    ${kpi('Voice Chat Usage',last(d.voiceChatPct).toFixed(1)+'%','Sessions with voice active',+delta(d.voiceChatPct))}
+    ${kpi('Clips & Shares',fmt(last(d.shares)+last(d.clips)+last(d.screenshots)),'Total captures/month',+delta(d.screenshots.map((_,i)=>d.screenshots[i]+d.clips[i]+d.shares[i])))}
+  </div>
+
+  <!-- Multiplayer vs Solo + Party Size -->
+  <div class="section-title"><span class="dot" style="background:${C.blue}"></span>Multiplayer Engagement</div>
+  <div class="grid g2">
+    <div class="card"><div class="card-title">Multiplayer vs Solo Play Mix</div><div class="chart-container"><canvas id="ch-mp-solo"></canvas></div></div>
+    <div class="card"><div class="card-title">Party Size Distribution (Apr 2026)</div><div class="chart-container"><canvas id="ch-party"></canvas></div></div>
+  </div>
+
+  <!-- Friends Network + Social Features -->
+  <div class="grid g2">
+    <div class="card"><div class="card-title">Friends Network Size Distribution</div><div class="chart-container"><canvas id="ch-friends"></canvas></div></div>
+    <div class="card"><div class="card-title">Social Features MAU</div><div class="chart-container"><canvas id="ch-social-features"></canvas></div></div>
+  </div>
+
+  <!-- Cross-Platform + Voice Chat -->
+  <div class="section-title"><span class="dot" style="background:${C.purple}"></span>Cross-Play & Communication</div>
+  <div class="grid g2">
+    <div class="card"><div class="card-title">Cross-Platform Multiplayer %</div><div class="chart-container"><canvas id="ch-crossplat"></canvas></div></div>
+    <div class="card"><div class="card-title">Voice Chat / Party Usage %</div><div class="chart-container"><canvas id="ch-voice"></canvas></div></div>
+  </div>
+
+  <!-- Clip & Share + Events -->
+  <div class="section-title"><span class="dot" style="background:${C.orange}"></span>Content Creation & Events</div>
+  <div class="grid g2">
+    <div class="card"><div class="card-title">Clip & Share Activity</div><div class="chart-container"><canvas id="ch-clips"></canvas></div></div>
+    <div class="card"><div class="card-title">Community Events Participation</div><div class="chart-container"><canvas id="ch-events"></canvas></div></div>
+  </div>
+
+  <!-- PGC + Streaming -->
+  <div class="section-title"><span class="dot" style="background:${C.gold}"></span>Player-Generated Content & Streaming</div>
+  <div class="grid g2">
+    <div class="card"><div class="card-title">Player-Generated Content</div><div class="chart-container"><canvas id="ch-pgc"></canvas></div></div>
+    <div class="card"><div class="card-title">Streaming Integration — Viewing Hours</div><div class="chart-container"><canvas id="ch-streaming"></canvas></div></div>
+  </div>
+
+  <!-- Growth Section -->
+  <div class="section-title"><span class="dot" style="background:${C.lime}"></span>Growth</div>
+  <div class="grid g4">
+    ${kpi('MAU',fmt(last(d.mau)),'Monthly Active Users',+delta(d.mau))}
+    ${kpi('DAU',fmt(last(d.dau)),'Daily Active Users',+delta(d.dau))}
+    ${kpi('New Users/Mo',fmt(last(d.newUsers)),'New registrations',+delta(d.newUsers))}
+    ${kpi('DAU/MAU',((last(d.dau)/last(d.mau))*100).toFixed(1)+'%','Stickiness ratio',+(((last(d.dau)/last(d.mau))-(d.dau[0]/d.mau[0]))/(d.dau[0]/d.mau[0])*100).toFixed(1))}
+  </div>
+  <div class="grid g1">
+    <div class="card"><div class="card-title">MAU & DAU Trend</div><div class="chart-container"><canvas id="ch-growth"></canvas></div></div>
+  </div>
+
+  <!-- Engagement Section -->
+  <div class="section-title"><span class="dot" style="background:${C.blue}"></span>Engagement</div>
+  <div class="grid g3">
+    ${kpi('Total Minutes',fmt(last(d.minutes)),'Monthly play minutes',+delta(d.minutes))}
+    ${kpi('Min/DAU/Day',((last(d.minutes)/last(d.dau)/30)).toFixed(0)+' min','Avg daily session',+(((last(d.minutes)/last(d.dau))-(d.minutes[0]/d.dau[0]))/(d.minutes[0]/d.dau[0])*100).toFixed(1))}
+    ${kpi('Sessions w/ Social',((last(d.mpPct)*0.85 + last(d.voiceChatPct)*0.15)).toFixed(1)+'%','MP or voice chat',+delta(d.mpPct))}
+  </div>
+  <div class="grid g1">
+    <div class="card"><div class="card-title">Monthly Play Minutes</div><div class="chart-container"><canvas id="ch-minutes"></canvas></div></div>
+  </div>
+
+  <!-- Monetization Section -->
+  <div class="section-title"><span class="dot" style="background:${C.gold}"></span>Monetization</div>
+  <div class="grid g3">
+    ${kpi('Revenue',fmt(last(d.revenue)),'Monthly revenue',+delta(d.revenue))}
+    ${kpi('ARPU','$'+last(d.arpu).toFixed(2),'Avg rev per user',+delta(d.arpu))}
+    ${kpi('MP Player ARPU','$'+(last(d.arpu)*1.35).toFixed(2),'MP users spend 35% more',+delta(d.arpu))}
+  </div>
+  <div class="grid g1">
+    <div class="card"><div class="card-title">Revenue Trend</div><div class="chart-container"><canvas id="ch-revenue"></canvas></div></div>
+  </div>
+
+  <!-- Retention Section -->
+  <div class="section-title"><span class="dot" style="background:${C.red}"></span>Retention</div>
+  <div class="grid g3">
+    ${kpi('D1 Retention',last(d.d1).toFixed(1)+'%','Day 1',+delta(d.d1))}
+    ${kpi('D7 Retention',last(d.d7).toFixed(1)+'%','Day 7',+delta(d.d7))}
+    ${kpi('D30 Retention',last(d.d30).toFixed(1)+'%','Day 30',+delta(d.d30))}
+  </div>
+  <div class="grid g1">
+    <div class="card"><div class="card-title">Retention Cohort Trend</div><div class="chart-container"><canvas id="ch-retention"></canvas></div></div>
+  </div>
+  `;
+
+  // ── Charts ──
+  // MP vs Solo stacked area
+  makeChart('ch-mp-solo',{type:'line',data:{labels:MONTHS,datasets:[
+    {label:'Multiplayer',data:d.mpPct,fill:true,backgroundColor:'rgba(16,137,62,.35)',borderColor:C.green2},
+    {label:'Solo',data:d.soloPct,fill:true,backgroundColor:'rgba(0,120,212,.25)',borderColor:C.blue}
+  ]},options:{scales:{y:{stacked:true,max:100,ticks:{callback:v=>v+'%'}},x:{stacked:true}},plugins:{datalabels:{display:false},tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+ctx.parsed.y.toFixed(1)+'%'}}}}});
+
+  // Party size
+  makeChart('ch-party',{type:'bar',data:{labels:['Solo','Duo','3-4 Players','5+ Players'],datasets:[{
+    data:[last(d.partySolo),last(d.partyDuo),last(d.party34),last(d.party5p)],
+    backgroundColor:[C.blue,C.green2,C.purple,C.orange]
+  }]},options:{indexAxis:'y',plugins:{legend:{display:false},datalabels:{anchor:'end',align:'right',color:'#E6EDF3',font:{weight:600},formatter:v=>v+'%'}},scales:{x:{max:40,ticks:{callback:v=>v+'%'}}}}});
+
+  // Friends dist
+  makeChart('ch-friends',{type:'bar',data:{labels:d.friendsDist.labels,datasets:[{
+    data:d.friendsDist.data,backgroundColor:[C.blue,C.green2,C.purple,C.orange,C.gold,C.red]
+  }]},options:{plugins:{legend:{display:false},datalabels:{anchor:'end',align:'top',color:'#E6EDF3',font:{weight:600},formatter:v=>v+'%'}},scales:{y:{ticks:{callback:v=>v+'%'}}}}});
+
+  // Social features MAU
+  makeChart('ch-social-features',{type:'line',data:{labels:MONTHS,datasets:[
+    {label:'Party Chat',data:d.partyChat,borderColor:C.green2,backgroundColor:'rgba(16,137,62,.1)',fill:true},
+    {label:'Game Invites',data:d.invites,borderColor:C.blue},
+    {label:'Looking for Group',data:d.lfg,borderColor:C.purple},
+    {label:'Clubs',data:d.clubs,borderColor:C.orange}
+  ]},options:{plugins:{datalabels:{display:false}},scales:{y:{ticks:{callback:v=>fmt(v,0)}}}}});
+
+  // Cross-platform
+  makeChart('ch-crossplat',{type:'line',data:{labels:MONTHS,datasets:[{label:'Cross-Platform %',data:d.crossPlatPct,borderColor:C.purple,backgroundColor:'rgba(123,104,238,.15)',fill:true,borderWidth:2.5}]},options:{plugins:{datalabels:{display:false},annotation:{annotations:{target:{type:'line',yMin:40,yMax:40,borderColor:'rgba(255,185,0,.5)',borderDash:[6,4],label:{display:true,content:'FY26 Target: 40%',position:'start',color:'#FFB900',font:{size:10}}}}}},scales:{y:{ticks:{callback:v=>v+'%'}}}}});
+
+  // Voice chat
+  makeChart('ch-voice',{type:'line',data:{labels:MONTHS,datasets:[{label:'Voice Chat %',data:d.voiceChatPct,borderColor:C.orange,backgroundColor:'rgba(255,140,0,.12)',fill:true,borderWidth:2.5}]},options:{plugins:{datalabels:{display:false}},scales:{y:{ticks:{callback:v=>v+'%'}}}}});
+
+  // Clips
+  makeChart('ch-clips',{type:'bar',data:{labels:MONTHS,datasets:[
+    {label:'Screenshots',data:d.screenshots,backgroundColor:C.blue},
+    {label:'Game Clips',data:d.clips,backgroundColor:C.green2},
+    {label:'Shares',data:d.shares,backgroundColor:C.purple}
+  ]},options:{plugins:{datalabels:{display:false}},scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:v=>fmt(v,0)}}}}});
+
+  // Events
+  makeChart('ch-events',{type:'bar',data:{labels:MONTHS,datasets:[
+    {label:'Participants',data:d.eventParticipation,backgroundColor:'rgba(0,120,212,.6)',borderColor:C.blue,borderWidth:1,yAxisID:'y'},
+    {label:'Engagement Rate %',data:d.eventEngRate,type:'line',borderColor:C.gold,backgroundColor:'rgba(255,185,0,.1)',yAxisID:'y1'}
+  ]},options:{plugins:{datalabels:{display:false}},scales:{y:{position:'left',ticks:{callback:v=>fmt(v,0)}},y1:{position:'right',grid:{drawOnChartArea:false},ticks:{callback:v=>v+'%'}}}}});
+
+  // PGC
+  makeChart('ch-pgc',{type:'line',data:{labels:MONTHS,datasets:[
+    {label:'Minecraft Worlds',data:d.pgcWorlds,borderColor:C.lime},
+    {label:'Forza Liveries',data:d.pgcLiveries,borderColor:C.blue},
+    {label:'Map Creations',data:d.pgcMaps,borderColor:C.purple},
+    {label:'Total PGC',data:d.pgcTotal,borderColor:C.gold,borderDash:[5,3]}
+  ]},options:{plugins:{datalabels:{display:false}},scales:{y:{ticks:{callback:v=>fmt(v,0)}}}}});
+
+  // Streaming
+  makeChart('ch-streaming',{type:'bar',data:{labels:MONTHS,datasets:[
+    {label:'YouTube Hours',data:d.ytHours,backgroundColor:'rgba(232,17,35,.55)',borderColor:C.red,borderWidth:1},
+    {label:'Twitch Hours',data:d.twitchHours,backgroundColor:'rgba(123,104,238,.55)',borderColor:C.purple,borderWidth:1}
+  ]},options:{plugins:{datalabels:{display:false}},scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:v=>fmt(v,0)}}}}});
+
+  // Growth
+  makeChart('ch-growth',{type:'line',data:{labels:MONTHS,datasets:[
+    {label:'MAU',data:d.mau,borderColor:C.green2,yAxisID:'y'},
+    {label:'DAU',data:d.dau,borderColor:C.blue,yAxisID:'y'}
+  ]},options:{plugins:{datalabels:{display:false}},scales:{y:{ticks:{callback:v=>fmt(v,0)}}}}});
+
+  // Minutes
+  makeChart('ch-minutes',{type:'bar',data:{labels:MONTHS,datasets:[{label:'Play Minutes',data:d.minutes,backgroundColor:'rgba(0,120,212,.5)',borderColor:C.blue,borderWidth:1}]},options:{plugins:{datalabels:{display:false}},scales:{y:{ticks:{callback:v=>fmt(v,0)}}}}});
+
+  // Revenue
+  makeChart('ch-revenue',{type:'bar',data:{labels:MONTHS,datasets:[{label:'Revenue ($)',data:d.revenue,backgroundColor:'rgba(255,185,0,.5)',borderColor:C.gold,borderWidth:1}]},options:{plugins:{datalabels:{display:false}},scales:{y:{ticks:{callback:v=>'$'+fmt(v,0)}}}}});
+
+  // Retention
+  makeChart('ch-retention',{type:'line',data:{labels:MONTHS,datasets:[
+    {label:'D1',data:d.d1,borderColor:C.green2},
+    {label:'D7',data:d.d7,borderColor:C.blue},
+    {label:'D30',data:d.d30,borderColor:C.purple}
+  ]},options:{plugins:{datalabels:{display:false}},scales:{y:{ticks:{callback:v=>v+'%'}}}}});
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// GAME TAB BUILDER
+// ═══════════════════════════════════════════════════════════════════════
+function buildGameTab(el,id){
+  const g = GAMES[id];
+  if(!g){el.innerHTML='<p>No data for this tab.</p>';return}
+
+  // Game-specific metric cards
+  let specificMetrics = '';
+  let specificCharts = '';
+
+  if(id==='gamepass'){
+    specificMetrics = `
+    ${kpi('New Subs/Mo',fmt(last(g.newSubs)),'New subscriptions',+delta(g.newSubs))}
+    ${kpi('Churn Rate',last(g.churn).toFixed(1)+'%','Monthly churn',+delta(g.churn))}`;
+  } else if(id==='halo'){
+    specificMetrics = `
+    ${kpi('Ranked Pop',fmt(last(g.rankPop)),'Active ranked players',+delta(g.rankPop))}
+    ${kpi('Forge Creations',fmt(last(g.forgeCreations))+'/mo','User maps & modes',+delta(g.forgeCreations))}
+    ${kpi('Avg Party Size',last(g.avgPartySize).toFixed(1),'MP sessions',+delta(g.avgPartySize))}
+    ${kpi('Competitive %',last(g.competitiveQueuePct).toFixed(1)+'%','Ranked queue share',+delta(g.competitiveQueuePct))}`;
+  } else if(id==='forza'){
+    specificMetrics = `
+    ${kpi('Liveries Created',fmt(last(g.liveriesCreated))+'/mo','Community designs',+delta(g.liveriesCreated))}
+    ${kpi('Liveries Downloaded',fmt(last(g.liveriesDownloaded))+'/mo','Community usage',+delta(g.liveriesDownloaded))}
+    ${kpi('Photo Shares',fmt(last(g.photoShares))+'/mo','Photo mode shares',+delta(g.photoShares))}
+    ${kpi('Avg Convoy Size',last(g.convoySize).toFixed(1),'Players per convoy',+delta(g.convoySize))}`;
+  } else if(id==='cod'){
+    specificMetrics = `
+    ${kpi('Warzone MAU',fmt(last(g.warzoneMAU)),'Battle royale active',+delta(g.warzoneMAU))}
+    ${kpi('Ranked Pop',fmt(last(g.rankedPop)),'Competitive players',+delta(g.rankedPop))}
+    ${kpi('Clan Members',fmt(last(g.clanMembers)),'In active clans',+delta(g.clanMembers))}
+    ${kpi('Avg Squad Size',last(g.avgSquadSize).toFixed(1),'MP sessions',+delta(g.avgSquadSize))}`;
+  } else if(id==='minecraft'){
+    specificMetrics = `
+    ${kpi('Realms Subs',fmt(last(g.realmsSubs)),'Active subscriptions',+delta(g.realmsSubs))}
+    ${kpi('Worlds Shared',fmt(last(g.worldsShared))+'/mo','Community worlds',+delta(g.worldsShared))}
+    ${kpi('Marketplace Creators',fmt(last(g.marketplaceCreators)),'Active creators',+delta(g.marketplaceCreators))}
+    ${kpi('Avg Realm Size',last(g.avgRealmSize).toFixed(1),'Players per realm',+delta(g.avgRealmSize))}`;
+  } else if(id==='seaofthieves'){
+    specificMetrics = `
+    ${kpi('Crew Sessions',fmt(last(g.crewSessions))+'/mo','Multiplayer crews',+delta(g.crewSessions))}
+    ${kpi('Avg Crew Size',last(g.avgCrewSize).toFixed(1),'Players per crew',+delta(g.avgCrewSize))}
+    ${kpi('Alliances Formed',fmt(last(g.allianceFormations))+'/mo','Cross-crew play',+delta(g.allianceFormations))}
+    ${kpi('Emporium Sales',fmt(last(g.pirateEmporium))+'/mo','Cosmetic purchases',+delta(g.pirateEmporium))}`;
+  } else if(id==='starfield'){
+    specificMetrics = `
+    ${kpi('Mods Installed',fmt(last(g.modsInstalled))+'/mo','Community mods',+delta(g.modsInstalled))}
+    ${kpi('Mods Created',fmt(last(g.modsCreated))+'/mo','By creators',+delta(g.modsCreated))}
+    ${kpi('Photo Shares',fmt(last(g.photoShares))+'/mo','Photo mode',+delta(g.photoShares))}
+    ${kpi('Creation Kit Users',fmt(last(g.creationKitUsers)),'Active modders',+delta(g.creationKitUsers))}`;
+  }
+
+  const isSinglePlayer = id==='starfield';
+
+  el.innerHTML = `
+  <div class="section-title" style="margin-top:0"><span class="dot" style="background:${g.color}"></span>${g.label} — Social & Multiplayer</div>
+  <div class="grid g5">
+    ${kpi('MAU',fmt(last(g.mau)),'Monthly Active Users',+delta(g.mau))}
+    ${kpi('DAU',fmt(last(g.dau)),'Daily Active Users',+delta(g.dau))}
+    ${kpi(isSinglePlayer?'Solo Play':'Multiplayer %',(isSinglePlayer?'100':last(g.mpPct).toFixed(1))+'%',isSinglePlayer?'Single-player title':'Of total sessions',isSinglePlayer?0:+delta(g.mpPct))}
+    ${kpi('Cross-Platform',isSinglePlayer?'N/A':last(g.crossPlatPct).toFixed(1)+'%',isSinglePlayer?'Single-player':'Of MP cross-play',isSinglePlayer?0:+delta(g.crossPlatPct))}
+    ${kpi('Clips Shared',fmt(last(g.clipsShared))+'/mo','Content captures',+delta(g.clipsShared))}
+  </div>
+
+  <div class="grid g4">
+    ${specificMetrics}
+  </div>
+
+  <div class="card" style="margin:16px 0;padding:16px 20px;border-left:3px solid ${g.color}">
+    <div style="font-size:.75rem;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Social Insight</div>
+    <div style="font-size:.85rem;line-height:1.5">${g.socialNote}</div>
+  </div>
+
+  <div class="grid g2">
+    <div class="card"><div class="card-title">MAU & DAU Trend</div><div class="chart-container"><canvas id="ch-g-mau-${id}"></canvas></div></div>
+    <div class="card"><div class="card-title">${isSinglePlayer?'Community Engagement':'Multiplayer & Social Metrics'}</div><div class="chart-container"><canvas id="ch-g-social-${id}"></canvas></div></div>
+  </div>
+
+  <div class="grid g2">
+    <div class="card"><div class="card-title">Content Creation & Sharing</div><div class="chart-container"><canvas id="ch-g-clips-${id}"></canvas></div></div>
+    <div class="card"><div class="card-title">${isSinglePlayer?'Mod Ecosystem':'Voice Chat & Cross-Play'}</div><div class="chart-container"><canvas id="ch-g-comm-${id}"></canvas></div></div>
+  </div>
+
+  <div class="section-title"><span class="dot" style="background:${C.gold}"></span>Monetization & Retention</div>
+  <div class="grid g4">
+    ${kpi('Revenue',fmt(last(g.revenue)),'Monthly',+delta(g.revenue))}
+    ${kpi('ARPU','$'+last(g.arpu).toFixed(2),'Per user',+delta(g.arpu))}
+    ${kpi('D30 Retention',last(g.d30).toFixed(1)+'%','Day 30',+delta(g.d30))}
+    ${kpi('Play Minutes',fmt(last(g.minutes)),'Monthly',+delta(g.minutes))}
+  </div>
+  <div class="grid g2">
+    <div class="card"><div class="card-title">Revenue Trend</div><div class="chart-container"><canvas id="ch-g-rev-${id}"></canvas></div></div>
+    <div class="card"><div class="card-title">Engagement — Play Minutes</div><div class="chart-container"><canvas id="ch-g-min-${id}"></canvas></div></div>
+  </div>
+  `;
+
+  // MAU/DAU
+  makeChart('ch-g-mau-'+id,{type:'line',data:{labels:MONTHS,datasets:[
+    {label:'MAU',data:g.mau,borderColor:g.color,backgroundColor:g.color+'22',fill:true},
+    {label:'DAU',data:g.dau,borderColor:C.blue}
+  ]},options:{plugins:{datalabels:{display:false}},scales:{y:{ticks:{callback:v=>fmt(v,0)}}}}});
+
+  // Social metrics chart
+  if(isSinglePlayer){
+    makeChart('ch-g-social-'+id,{type:'line',data:{labels:MONTHS,datasets:[
+      {label:'Mods Installed',data:g.modsInstalled,borderColor:C.lime},
+      {label:'Photo Shares',data:g.photoShares,borderColor:C.purple},
+      {label:'Clips Shared',data:g.clipsShared,borderColor:C.orange}
+    ]},options:{plugins:{datalabels:{display:false}},scales:{y:{ticks:{callback:v=>fmt(v,0)}}}}});
+  } else {
+    makeChart('ch-g-social-'+id,{type:'line',data:{labels:MONTHS,datasets:[
+      {label:'Multiplayer %',data:g.mpPct,borderColor:g.color,yAxisID:'y'},
+      {label:'Cross-Platform %',data:g.crossPlatPct,borderColor:C.purple,yAxisID:'y'},
+      {label:'Voice Chat %',data:g.voiceChatPct,borderColor:C.orange,yAxisID:'y'}
+    ]},options:{plugins:{datalabels:{display:false}},scales:{y:{ticks:{callback:v=>v+'%'}}}}});
+  }
+
+  // Clips
+  makeChart('ch-g-clips-'+id,{type:'bar',data:{labels:MONTHS,datasets:[
+    {label:'Clips/Captures Shared',data:g.clipsShared,backgroundColor:g.color+'88',borderColor:g.color,borderWidth:1}
+  ]},options:{plugins:{datalabels:{display:false}},scales:{y:{ticks:{callback:v=>fmt(v,0)}}}}});
+
+  // Comm chart
+  if(isSinglePlayer){
+    makeChart('ch-g-comm-'+id,{type:'line',data:{labels:MONTHS,datasets:[
+      {label:'Mods Created',data:g.modsCreated,borderColor:C.green2},
+      {label:'Creation Kit Users',data:g.creationKitUsers,borderColor:C.gold}
+    ]},options:{plugins:{datalabels:{display:false}},scales:{y:{ticks:{callback:v=>fmt(v,0)}}}}});
+  } else {
+    makeChart('ch-g-comm-'+id,{type:'line',data:{labels:MONTHS,datasets:[
+      {label:'Voice Chat %',data:g.voiceChatPct,borderColor:C.orange,backgroundColor:'rgba(255,140,0,.1)',fill:true,yAxisID:'y'},
+      {label:'Cross-Platform %',data:g.crossPlatPct,borderColor:C.purple,yAxisID:'y'}
+    ]},options:{plugins:{datalabels:{display:false}},scales:{y:{ticks:{callback:v=>v+'%'}}}}});
+  }
+
+  // Revenue
+  makeChart('ch-g-rev-'+id,{type:'bar',data:{labels:MONTHS,datasets:[{label:'Revenue',data:g.revenue,backgroundColor:C.gold+'77',borderColor:C.gold,borderWidth:1}]},options:{plugins:{datalabels:{display:false}},scales:{y:{ticks:{callback:v=>'$'+fmt(v,0)}}}}});
+
+  // Minutes
+  makeChart('ch-g-min-'+id,{type:'bar',data:{labels:MONTHS,datasets:[{label:'Play Minutes',data:g.minutes,backgroundColor:C.blue+'66',borderColor:C.blue,borderWidth:1}]},options:{plugins:{datalabels:{display:false}},scales:{y:{ticks:{callback:v=>fmt(v,0)}}}}});
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────
+showTab('total');
+</script>
+</body>
+</html>

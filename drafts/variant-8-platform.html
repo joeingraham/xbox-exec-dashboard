@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Xbox Executive Dashboard — Platform Health</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<style>
+:root{
+  --bg:#0D1117;--card:#161B22;--border:#21262D;--text:#E6EDF3;--text-dim:#8B949E;
+  --green:#107C10;--green2:#10893E;--lime:#7FBA00;--blue:#0078D4;--purple:#7B68EE;
+  --orange:#FF8C00;--red:#E81123;--gold:#FFB900;--cyan:#49CCF9;--pink:#FD71AF;
+  --teal:#79D9B9;--sidebar-w:220px;--header-h:56px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* HEADER */
+.header{position:fixed;top:0;left:0;right:0;height:var(--header-h);background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;z-index:100;gap:16px}
+.header-logo{display:flex;align-items:center;gap:10px}
+.header-logo svg{width:32px;height:32px}
+.header-title{font-size:18px;font-weight:700;letter-spacing:-0.3px}
+.header-subtitle{font-size:12px;color:var(--text-dim);margin-left:8px;padding:3px 10px;background:var(--purple);border-radius:12px;color:#fff;font-weight:600;letter-spacing:0.5px}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:16px}
+.header-date{font-size:12px;color:var(--text-dim)}
+.header-badge{font-size:11px;padding:3px 10px;border-radius:10px;font-weight:600}
+.live-badge{background:rgba(16,124,16,.2);color:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+
+/* SIDEBAR */
+.sidebar{position:fixed;top:var(--header-h);left:0;width:var(--sidebar-w);height:calc(100vh - var(--header-h));background:var(--card);border-right:1px solid var(--border);overflow-y:auto;z-index:90;padding:12px 0}
+.sidebar-section{padding:8px 16px;font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px}
+.sidebar-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;font-size:13px;color:var(--text-dim);transition:all .15s;border-left:3px solid transparent}
+.sidebar-item:hover{background:rgba(255,255,255,.04);color:var(--text)}
+.sidebar-item.active{color:var(--text);background:rgba(16,124,16,.08);border-left-color:var(--green)}
+.sidebar-item .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* MAIN */
+.main{margin-left:var(--sidebar-w);margin-top:var(--header-h);padding:24px;min-height:calc(100vh - var(--header-h))}
+.tab-content{display:none}.tab-content.active{display:block}
+
+/* KPI STRIP */
+.kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px}
+.kpi-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;position:relative;overflow:hidden}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:10px 10px 0 0}
+.kpi-label{font-size:11px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.kpi-value{font-size:26px;font-weight:800;letter-spacing:-1px;line-height:1.1}
+.kpi-sub{font-size:11px;margin-top:4px;display:flex;align-items:center;gap:4px}
+.kpi-up{color:var(--green)}.kpi-down{color:var(--red)}.kpi-flat{color:var(--gold)}
+
+/* CHARTS */
+.chart-grid{display:grid;gap:16px;margin-bottom:20px}
+.grid-2{grid-template-columns:repeat(2,1fr)}
+.grid-3{grid-template-columns:repeat(3,1fr)}
+.grid-4{grid-template-columns:repeat(4,1fr)}
+.grid-2-1{grid-template-columns:2fr 1fr}
+.grid-1-2{grid-template-columns:1fr 2fr}
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px}
+.chart-card-title{font-size:13px;font-weight:700;margin-bottom:2px;display:flex;align-items:center;gap:8px}
+.chart-card-sub{font-size:11px;color:var(--text-dim);margin-bottom:14px}
+.chart-wrap{position:relative;width:100%;height:260px}
+.chart-wrap.tall{height:320px}
+.chart-wrap.short{height:200px}
+
+/* TABLE */
+.data-table{width:100%;border-collapse:collapse;font-size:12px}
+.data-table th{text-align:left;padding:8px 10px;color:var(--text-dim);font-weight:600;border-bottom:1px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+.data-table td{padding:8px 10px;border-bottom:1px solid rgba(33,38,45,.5)}
+.data-table tr:hover td{background:rgba(255,255,255,.02)}
+.bar-cell{display:flex;align-items:center;gap:8px}
+.bar-fill{height:6px;border-radius:3px;min-width:4px}
+
+/* SECTION HEADER */
+.section-header{font-size:15px;font-weight:700;margin:24px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.section-header .icon{width:20px;height:20px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px}
+
+/* RESPONSIVE */
+@media(max-width:1200px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:900px){
+  .sidebar{display:none}.main{margin-left:0}
+  .grid-2,.grid-3,.grid-2-1,.grid-1-2{grid-template-columns:1fr}
+  .kpi-strip{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-logo">
+    <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="15" stroke="#107C10" stroke-width="1.5"/><path d="M8 16c0-2 2.5-6 4-7.5S15 7 16 7s2.5 0 4 1.5S24 14 24 16s-2 6.5-4 8-2.5 2-4 2-2.5-.5-4-2S8 18 8 16z" fill="#107C10" opacity=".85"/></svg>
+    <span class="header-title">Xbox Executive Dashboard</span>
+    <span class="header-subtitle">PLATFORM HEALTH</span>
+  </div>
+  <div class="header-right">
+    <span class="header-badge live-badge">● LIVE</span>
+    <span class="header-date">May 2025 — Apr 2026 · FY26</span>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-section">Overview</div>
+  <div class="sidebar-item active" onclick="switchTab('total')"><span class="dot" style="background:var(--green)"></span>Total Xbox</div>
+  <div class="sidebar-item" onclick="switchTab('gamepass')"><span class="dot" style="background:var(--blue)"></span>Game Pass</div>
+  <div class="sidebar-section">Franchises</div>
+  <div class="sidebar-item" onclick="switchTab('halo')"><span class="dot" style="background:var(--cyan)"></span>Halo</div>
+  <div class="sidebar-item" onclick="switchTab('forza')"><span class="dot" style="background:var(--orange)"></span>Forza</div>
+  <div class="sidebar-item" onclick="switchTab('cod')"><span class="dot" style="background:var(--red)"></span>Call of Duty</div>
+  <div class="sidebar-item" onclick="switchTab('minecraft')"><span class="dot" style="background:var(--lime)"></span>Minecraft</div>
+  <div class="sidebar-item" onclick="switchTab('sot')"><span class="dot" style="background:var(--gold)"></span>Sea of Thieves</div>
+  <div class="sidebar-item" onclick="switchTab('starfield')"><span class="dot" style="background:var(--purple)"></span>Starfield</div>
+</div>
+
+<!-- MAIN -->
+<div class="main" id="mainContent"></div>
+
+<script>
+// ── DATA ──
+const MONTHS = ['May 25','Jun 25','Jul 25','Aug 25','Sep 25','Oct 25','Nov 25','Dec 25','Jan 26','Feb 26','Mar 26','Apr 26'];
+const M = MONTHS;
+
+// Platform MAU (millions)
+const D = {
+  seriesXS: [29.1,29.4,30.2,30.8,31.1,31.5,32.0,33.2,32.8,32.5,32.9,33.4],
+  xboxOne:  [49.2,48.5,47.8,47.1,46.5,45.9,45.3,44.8,44.2,43.7,43.1,42.6],
+  windowsPC:[38.5,39.2,40.1,41.0,41.8,42.5,43.4,44.8,44.2,43.8,44.5,45.2],
+  cloud:    [8.2,8.8,9.5,10.1,10.8,11.4,12.2,13.5,13.1,13.4,14.0,14.8],
+  mobile:   [12.5,13.0,13.6,14.1,14.7,15.2,15.8,16.5,16.2,16.0,16.6,17.1],
+  // Total MAU
+  get totalMAU(){ return this.seriesXS.map((_,i)=>this.seriesXS[i]+this.xboxOne[i]+this.windowsPC[i]+this.cloud[i]+this.mobile[i]) },
+
+  // Console install base (cumulative, millions)
+  seriesXSInstall: [29.5,30.0,30.6,31.2,31.8,32.5,33.4,35.2,35.8,36.2,36.8,37.5],
+  xboxOneInstall:  [51.0,51.0,51.0,51.0,51.0,51.0,51.0,51.0,51.0,51.0,51.0,51.0],
+
+  // Cloud gaming metrics
+  cloudMinutes:  [285,310,340,365,395,420,460,520,505,510,535,570], // millions of minutes
+  cloudLatencyP50:[42,41,40,39,38,37,36,35,35,34,34,33], // ms
+  cloudDropout:  [3.2,3.0,2.8,2.6,2.5,2.3,2.1,1.9,1.8,1.8,1.7,1.6], // %
+  cloudStreamQ:  [89,90,90,91,91,92,92,93,93,93,94,94], // % good quality
+
+  // PC Game Pass subscribers (millions)
+  pcGPSubs: [12.8,13.2,13.7,14.1,14.6,15.0,15.5,16.4,16.1,16.3,16.8,17.4],
+
+  // Cross-platform users (% on 2+ platforms)
+  crossPlatPct: [22.1,22.5,23.0,23.4,23.9,24.3,24.8,25.5,25.2,25.4,25.8,26.3],
+
+  // Platform revenue (millions $)
+  revConsole: [620,610,640,660,680,720,780,920,750,710,740,770],
+  revPC:      [280,290,310,325,340,360,385,440,400,380,395,415],
+  revCloud:   [45,50,56,62,68,74,82,98,90,88,94,102],
+  revMobile:  [35,38,42,45,48,52,58,68,62,58,62,68],
+
+  // ARPU by platform ($)
+  arpuConsole:[8.10,8.05,8.25,8.40,8.55,8.75,9.10,9.85,9.20,8.95,9.15,9.40],
+  arpuPC:     [7.25,7.40,7.70,7.90,8.10,8.45,8.85,9.80,9.05,8.65,8.85,9.20],
+  arpuCloud:  [5.50,5.70,5.90,6.15,6.30,6.50,6.70,7.25,6.85,6.55,6.70,6.90],
+  arpuMobile: [2.80,2.90,3.10,3.20,3.25,3.40,3.65,4.10,3.80,3.60,3.75,3.95],
+
+  // Xbox App DAU (millions)
+  appDAU_mobile: [15.2,15.8,16.4,17.0,17.5,18.1,18.8,20.2,19.5,19.2,19.8,20.5],
+  appDAU_pc:     [9.8,10.2,10.6,11.0,11.4,11.8,12.3,13.2,12.8,12.5,12.9,13.4],
+
+  // Hardware attach rate (accessories per console)
+  attachRate: [1.42,1.44,1.45,1.47,1.48,1.50,1.52,1.58,1.56,1.55,1.57,1.59],
+  controllerAttach:[1.85,1.87,1.88,1.90,1.91,1.93,1.95,2.02,1.99,1.98,2.00,2.03],
+
+  // Xbox One → Series X|S migration (%)
+  migrationRate: [34.2,35.0,35.8,36.5,37.3,38.0,39.0,40.5,41.0,41.5,42.2,43.0],
+
+  // xCloud regional adoption (MAU in millions)
+  xcloudNA:   [3.8,4.1,4.4,4.7,5.0,5.3,5.6,6.2,6.0,6.1,6.4,6.8],
+  xcloudEU:   [2.5,2.7,2.9,3.1,3.3,3.5,3.7,4.2,4.0,4.1,4.3,4.6],
+  xcloudAPAC: [1.2,1.3,1.4,1.5,1.6,1.7,1.9,2.1,2.0,2.1,2.2,2.3],
+  xcloudROW:  [0.7,0.7,0.8,0.8,0.9,0.9,1.0,1.0,1.1,1.1,1.1,1.1],
+
+  // Game Pass total
+  gpTotal: [36.5,37.2,38.0,38.8,39.5,40.2,41.0,43.2,42.5,42.8,43.5,44.5],
+  gpUltimate:[18.2,18.6,19.0,19.4,19.8,20.1,20.5,21.8,21.2,21.4,21.8,22.5],
+  gpCore:    [10.5,10.6,10.8,11.0,11.2,11.4,11.5,12.0,11.8,11.8,12.0,12.2],
+
+  // Engagement
+  avgSessionMin:[52,53,54,55,56,57,58,62,60,59,60,61],
+  d30Retention: [42,42.5,43,43.2,43.5,44,44.5,45.5,45,44.8,45.2,45.8],
+
+  // Game-specific platform breakdowns
+  games: {
+    halo: {
+      name:'Halo',color:'#49CCF9',
+      mau:[4.2,4.0,3.9,3.8,3.7,3.6,5.8,6.2,5.5,5.0,4.8,4.6],
+      platforms:{seriesXS:[55,55,54,54,53,53,52,51,51,50,50,49],xboxOne:[15,14,14,13,13,12,12,11,11,10,10,10],pc:[25,26,27,28,29,30,31,33,33,34,35,36],cloud:[5,5,5,5,5,5,5,5,5,6,5,5]},
+      rev:[28,26,25,24,23,22,42,48,38,32,30,29],
+      retention:[38,37,36,35,35,34,42,44,40,38,37,36]
+    },
+    forza: {
+      name:'Forza',color:'#FF8C00',
+      mau:[5.8,5.5,5.3,5.1,5.0,4.8,4.6,5.2,4.9,4.7,4.5,4.4],
+      platforms:{seriesXS:[48,48,47,47,46,46,45,44,44,43,43,42],xboxOne:[18,17,17,16,16,15,15,14,14,13,13,12],pc:[30,31,32,33,34,35,36,38,38,39,40,41],cloud:[4,4,4,4,4,4,4,4,4,5,4,5]},
+      rev:[38,35,33,32,30,28,27,35,30,28,26,25],
+      retention:[40,39,38,37,37,36,35,38,36,35,34,34]
+    },
+    cod: {
+      name:'Call of Duty',color:'#E81123',
+      mau:[32.5,31.0,30.0,29.0,28.0,27.5,35.0,38.0,35.0,33.0,31.5,30.5],
+      platforms:{seriesXS:[40,40,39,39,38,38,37,36,36,35,35,35],xboxOne:[22,21,20,19,18,17,16,15,15,14,13,13],pc:[32,33,35,36,38,39,41,43,43,44,45,46],cloud:[6,6,6,6,6,6,6,6,6,7,7,6]},
+      rev:[185,170,160,150,142,138,210,245,200,180,170,165],
+      retention:[45,44,43,42,41,40,48,50,46,44,43,42]
+    },
+    minecraft: {
+      name:'Minecraft',color:'#7FBA00',
+      mau:[18.5,19.0,20.5,21.0,20.0,19.5,19.0,20.0,19.5,19.0,19.8,20.2],
+      platforms:{seriesXS:[22,22,21,21,21,20,20,20,19,19,19,19],xboxOne:[18,17,17,16,16,15,15,14,14,13,13,12],pc:[28,29,30,31,31,32,33,34,34,35,36,36],cloud:[5,5,5,5,5,5,5,5,5,5,5,5],mobile:[27,27,27,27,27,28,27,27,28,28,27,28]},
+      rev:[65,68,75,78,72,70,68,80,72,68,72,75],
+      retention:[55,55,56,57,56,55,54,56,55,54,55,56]
+    },
+    sot: {
+      name:'Sea of Thieves',color:'#FFB900',
+      mau:[3.2,3.0,2.9,2.8,2.7,2.6,2.5,2.8,2.6,2.5,2.4,2.3],
+      platforms:{seriesXS:[50,50,49,49,48,48,47,46,46,45,45,44],xboxOne:[20,19,18,17,17,16,15,14,14,13,12,12],pc:[26,27,29,30,31,32,34,36,36,38,39,40],cloud:[4,4,4,4,4,4,4,4,4,4,4,4]},
+      rev:[12,11,10,10,9,9,8,12,10,9,8,8],
+      retention:[35,34,33,32,31,30,29,32,30,29,28,27]
+    },
+    starfield: {
+      name:'Starfield',color:'#7B68EE',
+      mau:[6.5,6.0,5.5,5.2,5.0,4.8,4.5,5.0,4.8,4.5,4.3,4.1],
+      platforms:{seriesXS:[55,54,53,52,51,50,49,48,48,47,46,45],xboxOne:[5,5,5,4,4,4,4,3,3,3,3,3],pc:[35,36,37,39,40,41,42,44,44,45,46,47],cloud:[5,5,5,5,5,5,5,5,5,5,5,5]},
+      rev:[35,30,26,24,22,20,18,25,22,20,18,17],
+      retention:[40,38,36,34,33,32,30,34,32,30,29,28]
+    }
+  }
+};
+
+// ── HELPERS ──
+const fmt = (v,d=1) => v>=1000? (v/1000).toFixed(d)+'B' : v>=1? v.toFixed(d)+'M' : (v*1000).toFixed(0)+'K';
+const fmtD = v => '$'+(v>=1000?(v/1000).toFixed(1)+'B':v.toFixed(0)+'M');
+const fmtPct = (v,d=1) => v.toFixed(d)+'%';
+const last = a => a[a.length-1];
+const prev = a => a[a.length-2];
+const yoy = (a) => ((last(a)-a[0])/a[0]*100).toFixed(1);
+const delta = (a) => {const d=last(a)-prev(a);return d>=0?'+'+d.toFixed(1):d.toFixed(1)};
+const kpiColor = v => v>0?'kpi-up':v<0?'kpi-down':'kpi-flat';
+const kpiArrow = v => v>0?'▲':v<0?'▼':'—';
+const sum = a => a.reduce((s,v)=>s+v,0);
+
+function makeKPI(label,value,change,suffix='',accentColor='var(--green)'){
+  const n = parseFloat(change);
+  return `<div class="kpi-card" style="--ac:${accentColor}"><style>.kpi-card[style*="${accentColor}"]::before{background:${accentColor}}</style>
+    <div class="kpi-label">${label}</div>
+    <div class="kpi-value">${value}</div>
+    <div class="kpi-sub ${kpiColor(n)}"><span>${kpiArrow(n)} ${Math.abs(n).toFixed(1)}%</span><span style="color:var(--text-dim);margin-left:4px">${suffix}</span></div>
+  </div>`;
+}
+
+// ── CHART DEFAULTS ──
+Chart.defaults.color = '#8B949E';
+Chart.defaults.borderColor = 'rgba(33,38,45,.6)';
+Chart.defaults.font.family = 'Inter';
+Chart.defaults.font.size = 11;
+Chart.defaults.plugins.legend.labels.boxWidth = 10;
+Chart.defaults.plugins.legend.labels.padding = 12;
+Chart.defaults.plugins.datalabels.display = false;
+Chart.defaults.elements.point.radius = 0;
+Chart.defaults.elements.point.hoverRadius = 4;
+Chart.defaults.elements.line.tension = 0.3;
+Chart.defaults.elements.line.borderWidth = 2;
+
+const PLAT_COLORS = {
+  seriesXS:'#107C10', xboxOne:'#10893E', pc:'#0078D4', cloud:'#7B68EE', mobile:'#FF8C00'
+};
+
+function mkChart(canvasId, cfg){
+  const el = document.getElementById(canvasId);
+  if(!el) return null;
+  return new Chart(el.getContext('2d'), cfg);
+}
+
+// ── TAB BUILDER ──
+function buildTotalTab(){
+  const totalNow = last(D.totalMAU);
+  const totalPrev = D.totalMAU[0];
+  const revTotal = D.revConsole.map((_,i)=>D.revConsole[i]+D.revPC[i]+D.revCloud[i]+D.revMobile[i]);
+  return `
+  <!-- KPI Strip -->
+  <div class="kpi-strip">
+    ${makeKPI('Total Xbox MAU',fmt(totalNow,1),((totalNow-totalPrev)/totalPrev*100).toFixed(1),'vs May 25','var(--green)')}
+    ${makeKPI('Series X|S MAU',fmt(last(D.seriesXS),1),yoy(D.seriesXS),'YTD','var(--green)')}
+    ${makeKPI('PC MAU',fmt(last(D.windowsPC),1),yoy(D.windowsPC),'YTD','var(--blue)')}
+    ${makeKPI('Cloud MAU',fmt(last(D.cloud),1),yoy(D.cloud),'YTD','var(--purple)')}
+    ${makeKPI('Cross-Platform %',fmtPct(last(D.crossPlatPct)),((last(D.crossPlatPct)-D.crossPlatPct[0])/D.crossPlatPct[0]*100).toFixed(1),'YTD','var(--gold)')}
+    ${makeKPI('Total Revenue',fmtD(sum(revTotal)),((revTotal[11]-revTotal[0])/revTotal[0]*100).toFixed(1),'MoM','var(--green)')}
+  </div>
+
+  <!-- 1. MAU by Platform -->
+  <div class="section-header"><span class="icon" style="background:var(--green)">📊</span>Platform MAU Breakdown</div>
+  <div class="chart-grid grid-2">
+    <div class="chart-card">
+      <div class="chart-card-title">MAU by Platform (Stacked Area)</div>
+      <div class="chart-card-sub">Monthly Active Users across all Xbox platforms</div>
+      <div class="chart-wrap tall"><canvas id="c_mauPlatform"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title">Platform Mix (% Share)</div>
+      <div class="chart-card-sub">Evolving platform share over 12 months</div>
+      <div class="chart-wrap tall"><canvas id="c_mauShare"></canvas></div>
+    </div>
+  </div>
+
+  <!-- 2. Console Install Base & 11. Migration -->
+  <div class="section-header"><span class="icon" style="background:var(--green)">🎮</span>Console Health</div>
+  <div class="chart-grid grid-3">
+    <div class="chart-card">
+      <div class="chart-card-title">Console Install Base</div>
+      <div class="chart-card-sub">Cumulative active consoles (M)</div>
+      <div class="chart-wrap"><canvas id="c_installBase"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title">Xbox One → Series X|S Migration</div>
+      <div class="chart-card-sub">% of Xbox One users who migrated</div>
+      <div class="chart-wrap"><canvas id="c_migration"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title">Hardware Attach Rate</div>
+      <div class="chart-card-sub">Accessories & controllers per console</div>
+      <div class="chart-wrap"><canvas id="c_attachRate"></canvas></div>
+    </div>
+  </div>
+
+  <!-- 3. Cloud Gaming -->
+  <div class="section-header"><span class="icon" style="background:var(--purple)">☁️</span>Cloud Gaming</div>
+  <div class="chart-grid grid-2">
+    <div class="chart-card">
+      <div class="chart-card-title">Cloud Gaming Adoption</div>
+      <div class="chart-card-sub">MAU and minutes played</div>
+      <div class="chart-wrap tall"><canvas id="c_cloudAdopt"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title">Cloud Gaming Quality Metrics</div>
+      <div class="chart-card-sub">Latency P50, stream quality, dropout rate</div>
+      <div class="chart-wrap tall"><canvas id="c_cloudQuality"></canvas></div>
+    </div>
+  </div>
+
+  <!-- 12. xCloud Expansion -->
+  <div class="chart-grid grid-2">
+    <div class="chart-card">
+      <div class="chart-card-title">xCloud Regional Adoption</div>
+      <div class="chart-card-sub">MAU by geography (millions)</div>
+      <div class="chart-wrap"><canvas id="c_xcloudRegion"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title">xCloud Region Share (Latest)</div>
+      <div class="chart-card-sub">Apr 2026 regional breakdown</div>
+      <div class="chart-wrap"><canvas id="c_xcloudPie"></canvas></div>
+    </div>
+  </div>
+
+  <!-- 4. PC Game Pass & 5. Cross-Platform -->
+  <div class="section-header"><span class="icon" style="background:var(--blue)">💻</span>PC & Cross-Platform</div>
+  <div class="chart-grid grid-2">
+    <div class="chart-card">
+      <div class="chart-card-title">PC Game Pass Subscriber Growth</div>
+      <div class="chart-card-sub">PC-specific subscribers (millions)</div>
+      <div class="chart-wrap"><canvas id="c_pcGP"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title">Cross-Platform Users</div>
+      <div class="chart-card-sub">% playing on 2+ platforms — stickier users</div>
+      <div class="chart-wrap"><canvas id="c_crossPlat"></canvas></div>
+    </div>
+  </div>
+
+  <!-- 6,7. Revenue & ARPU -->
+  <div class="section-header"><span class="icon" style="background:var(--gold)">💰</span>Monetization by Platform</div>
+  <div class="chart-grid grid-2">
+    <div class="chart-card">
+      <div class="chart-card-title">Platform Revenue Split</div>
+      <div class="chart-card-sub">Revenue by platform ($M)</div>
+      <div class="chart-wrap tall"><canvas id="c_revPlatform"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title">Platform-Specific ARPU</div>
+      <div class="chart-card-sub">Monthly ARPU by platform ($)</div>
+      <div class="chart-wrap tall"><canvas id="c_arpu"></canvas></div>
+    </div>
+  </div>
+
+  <!-- 9. Xbox App DAU -->
+  <div class="section-header"><span class="icon" style="background:var(--cyan)">📱</span>Xbox App & Engagement</div>
+  <div class="chart-grid grid-3">
+    <div class="chart-card">
+      <div class="chart-card-title">Xbox App DAU</div>
+      <div class="chart-card-sub">Mobile & PC companion app</div>
+      <div class="chart-wrap"><canvas id="c_appDAU"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title">Avg Session Length</div>
+      <div class="chart-card-sub">Minutes per session across platforms</div>
+      <div class="chart-wrap"><canvas id="c_session"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title">D30 Retention</div>
+      <div class="chart-card-sub">30-day retention rate (%)</div>
+      <div class="chart-wrap"><canvas id="c_retention"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Platform Table -->
+  <div class="section-header"><span class="icon" style="background:var(--green)">📋</span>Platform Readout</div>
+  <div class="chart-card">
+    <table class="data-table">
+      <thead><tr><th>Platform</th><th>MAU (Apr 26)</th><th>Δ YTD</th><th>ARPU</th><th>Revenue (Apr)</th><th>Trend</th></tr></thead>
+      <tbody>
+        ${[
+          {n:'Xbox Series X|S',mau:D.seriesXS,arpu:D.arpuConsole,rev:D.revConsole,c:'var(--green)',share:35},
+          {n:'Xbox One',mau:D.xboxOne,arpu:D.arpuConsole,rev:[...D.revConsole.map(v=>v*0.35)],c:'var(--green2)',share:25},
+          {n:'Windows PC',mau:D.windowsPC,arpu:D.arpuPC,rev:D.revPC,c:'var(--blue)',share:55},
+          {n:'Cloud Gaming',mau:D.cloud,arpu:D.arpuCloud,rev:D.revCloud,c:'var(--purple)',share:80},
+          {n:'Mobile',mau:D.mobile,arpu:D.arpuMobile,rev:D.revMobile,c:'var(--orange)',share:40}
+        ].map(p=>{
+          const chg = ((last(p.mau)-p.mau[0])/p.mau[0]*100);
+          return `<tr>
+            <td><span style="color:${p.c};font-weight:600">${p.n}</span></td>
+            <td>${fmt(last(p.mau),1)}</td>
+            <td class="${chg>=0?'kpi-up':'kpi-down'}">${chg>=0?'+':''}${chg.toFixed(1)}%</td>
+            <td>$${last(p.arpu).toFixed(2)}</td>
+            <td>${fmtD(last(p.rev))}</td>
+            <td><div class="bar-cell"><div class="bar-fill" style="width:${p.share}%;background:${p.c}"></div></div></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function buildGamePassTab(){
+  return `
+  <div class="kpi-strip">
+    ${makeKPI('Total Game Pass',fmt(last(D.gpTotal),1),yoy(D.gpTotal),'YTD','var(--blue)')}
+    ${makeKPI('Ultimate Tier',fmt(last(D.gpUltimate),1),yoy(D.gpUltimate),'YTD','var(--purple)')}
+    ${makeKPI('Core Tier',fmt(last(D.gpCore),1),yoy(D.gpCore),'YTD','var(--green)')}
+    ${makeKPI('PC Game Pass',fmt(last(D.pcGPSubs),1),yoy(D.pcGPSubs),'YTD','var(--blue)')}
+  </div>
+  <div class="chart-grid grid-2">
+    <div class="chart-card">
+      <div class="chart-card-title">Game Pass Subscriber Tiers</div>
+      <div class="chart-card-sub">Breakdown by tier (millions)</div>
+      <div class="chart-wrap tall"><canvas id="c_gpTiers"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title">PC Game Pass Growth</div>
+      <div class="chart-card-sub">PC-specific subscriber trend</div>
+      <div class="chart-wrap tall"><canvas id="c_gpPC"></canvas></div>
+    </div>
+  </div>
+  <div class="chart-grid grid-2">
+    <div class="chart-card">
+      <div class="chart-card-title">Game Pass Platform Distribution</div>
+      <div class="chart-card-sub">Where do GP subscribers play?</div>
+      <div class="chart-wrap"><canvas id="c_gpPlatDist"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title">Game Pass Revenue Impact</div>
+      <div class="chart-card-sub">Est. GP revenue contribution ($M)</div>
+      <div class="chart-wrap"><canvas id="c_gpRev"></canvas></div>
+    </div>
+  </div>`;
+}
+
+function buildGameTab(key){
+  const g = D.games[key];
+  const plats = g.platforms;
+  const hasMobile = !!plats.mobile;
+  return `
+  <div class="kpi-strip">
+    ${makeKPI(g.name+' MAU',fmt(last(g.mau),1),yoy(g.mau),'YTD',g.color)}
+    ${makeKPI('Console Share',fmtPct(last(plats.seriesXS)+(plats.xboxOne?last(plats.xboxOne):0)),'-','latest',g.color)}
+    ${makeKPI('PC Share',fmtPct(last(plats.pc)),'+','latest','var(--blue)')}
+    ${makeKPI('Revenue (Latest)',fmtD(last(g.rev)),yoy(g.rev),'YTD',g.color)}
+    ${makeKPI('D30 Retention',fmtPct(last(g.retention)),yoy(g.retention),'YTD','var(--green)')}
+  </div>
+  <div class="chart-grid grid-2">
+    <div class="chart-card">
+      <div class="chart-card-title">${g.name} MAU Trend</div>
+      <div class="chart-card-sub">Monthly active users (millions)</div>
+      <div class="chart-wrap tall"><canvas id="c_g_mau_${key}"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title">${g.name} Platform Mix (%)</div>
+      <div class="chart-card-sub">Platform share over time</div>
+      <div class="chart-wrap tall"><canvas id="c_g_plat_${key}"></canvas></div>
+    </div>
+  </div>
+  <div class="chart-grid grid-2">
+    <div class="chart-card">
+      <div class="chart-card-title">${g.name} Revenue ($M)</div>
+      <div class="chart-card-sub">Monthly revenue trend</div>
+      <div class="chart-wrap"><canvas id="c_g_rev_${key}"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title">${g.name} D30 Retention (%)</div>
+      <div class="chart-card-sub">30-day retention rate</div>
+      <div class="chart-wrap"><canvas id="c_g_ret_${key}"></canvas></div>
+    </div>
+  </div>
+  <div class="chart-card" style="margin-top:16px">
+    <div class="chart-card-title">Platform Breakdown — ${g.name}</div>
+    <table class="data-table">
+      <thead><tr><th>Platform</th><th>Share (Apr 26)</th><th>Δ vs May 25</th><th>Trend</th></tr></thead>
+      <tbody>
+        ${[
+          {n:'Series X|S',k:'seriesXS',c:'var(--green)'},
+          {n:'Xbox One',k:'xboxOne',c:'var(--green2)'},
+          {n:'Windows PC',k:'pc',c:'var(--blue)'},
+          {n:'Cloud',k:'cloud',c:'var(--purple)'},
+          ...(hasMobile?[{n:'Mobile',k:'mobile',c:'var(--orange)'}]:[])
+        ].filter(p=>plats[p.k]).map(p=>{
+          const arr=plats[p.k];const chg=last(arr)-arr[0];
+          return `<tr><td style="color:${p.c};font-weight:600">${p.n}</td><td>${last(arr)}%</td>
+            <td class="${chg>=0?'kpi-up':'kpi-down'}">${chg>=0?'+':''}${chg}pp</td>
+            <td><div class="bar-cell"><div class="bar-fill" style="width:${last(arr)}%;background:${p.c}"></div></div></td></tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+// ── CHART RENDERERS ──
+const charts = [];
+function destroyCharts(){ charts.forEach(c=>{try{c.destroy()}catch(e){}}); charts.length=0; }
+
+function areaDS(label,data,color,fill=true){
+  return {label,data,borderColor:color,backgroundColor:fill?color+'30':'transparent',fill,pointRadius:0,pointHoverRadius:4,tension:.35,borderWidth:2};
+}
+function barDS(label,data,color){
+  return {label,data,backgroundColor:color+'CC',borderColor:color,borderWidth:1,borderRadius:3};
+}
+function lineDS(label,data,color,dashed=false){
+  return {label,data,borderColor:color,backgroundColor:'transparent',fill:false,tension:.35,borderWidth:2,borderDash:dashed?[5,3]:[],pointRadius:0,pointHoverRadius:4};
+}
+
+function renderTotalCharts(){
+  // MAU by Platform - stacked area
+  charts.push(mkChart('c_mauPlatform',{type:'line',data:{labels:M,datasets:[
+    areaDS('Series X|S',D.seriesXS,PLAT_COLORS.seriesXS),
+    areaDS('Xbox One',D.xboxOne,PLAT_COLORS.xboxOne),
+    areaDS('Windows PC',D.windowsPC,PLAT_COLORS.pc),
+    areaDS('Cloud',D.cloud,PLAT_COLORS.cloud),
+    areaDS('Mobile',D.mobile,PLAT_COLORS.mobile),
+  ]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{stacked:true,title:{display:true,text:'MAU (M)'}},x:{grid:{display:false}}},plugins:{legend:{position:'bottom'}}}}));
+
+  // MAU Share
+  const totals = D.totalMAU;
+  charts.push(mkChart('c_mauShare',{type:'bar',data:{labels:M,datasets:[
+    barDS('Series X|S',D.seriesXS.map((v,i)=>v/totals[i]*100),PLAT_COLORS.seriesXS),
+    barDS('Xbox One',D.xboxOne.map((v,i)=>v/totals[i]*100),PLAT_COLORS.xboxOne),
+    barDS('PC',D.windowsPC.map((v,i)=>v/totals[i]*100),PLAT_COLORS.pc),
+    barDS('Cloud',D.cloud.map((v,i)=>v/totals[i]*100),PLAT_COLORS.cloud),
+    barDS('Mobile',D.mobile.map((v,i)=>v/totals[i]*100),PLAT_COLORS.mobile),
+  ]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{stacked:true,max:100,title:{display:true,text:'% Share'}},x:{stacked:true,grid:{display:false}}},plugins:{legend:{position:'bottom'}}}}));
+
+  // Console install base
+  charts.push(mkChart('c_installBase',{type:'line',data:{labels:M,datasets:[
+    {...lineDS('Series X|S',D.seriesXSInstall,'#107C10'),borderWidth:3},
+    lineDS('Xbox One (flat)',D.xboxOneInstall,'#10893E',true),
+  ]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{title:{display:true,text:'Cumulative (M)'},min:20},x:{grid:{display:false}}},plugins:{legend:{position:'bottom'}}}}));
+
+  // Migration rate
+  charts.push(mkChart('c_migration',{type:'line',data:{labels:M,datasets:[
+    {...lineDS('Migration Rate',D.migrationRate,'#FF8C00'),fill:true,backgroundColor:'rgba(255,140,0,.12)'},
+  ]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{title:{display:true,text:'%'},min:30,max:50},x:{grid:{display:false}}},plugins:{legend:{display:false},annotation:{annotations:{target:{type:'line',yMin:50,yMax:50,borderColor:'#7FBA00',borderDash:[5,3],borderWidth:1,label:{display:true,content:'Target 50%',position:'start',backgroundColor:'#7FBA0044',color:'#7FBA00',font:{size:10}}}}}}}}));
+
+  // Attach rate
+  charts.push(mkChart('c_attachRate',{type:'line',data:{labels:M,datasets:[
+    lineDS('Accessories',D.attachRate,'#49CCF9'),
+    lineDS('Controllers',D.controllerAttach,'#FFB900'),
+  ]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{title:{display:true,text:'Per Console'},min:1.3,max:2.2},x:{grid:{display:false}}},plugins:{legend:{position:'bottom'}}}}));
+
+  // Cloud adoption (dual axis)
+  charts.push(mkChart('c_cloudAdopt',{type:'line',data:{labels:M,datasets:[
+    {...lineDS('Cloud MAU (M)',D.cloud,'#7B68EE'),yAxisID:'y'},
+    {...lineDS('Minutes (M)',D.cloudMinutes,'#49CCF9'),yAxisID:'y1',borderDash:[5,3]},
+  ]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{position:'left',title:{display:true,text:'MAU (M)'}},y1:{position:'right',title:{display:true,text:'Minutes (M)'},grid:{drawOnChartArea:false}},x:{grid:{display:false}}},plugins:{legend:{position:'bottom'}}}}));
+
+  // Cloud quality
+  charts.push(mkChart('c_cloudQuality',{type:'line',data:{labels:M,datasets:[
+    lineDS('Latency P50 (ms)',D.cloudLatencyP50,'#E81123'),
+    lineDS('Stream Quality %',D.cloudStreamQ,'#107C10'),
+    lineDS('Dropout Rate %',D.cloudDropout,'#FFB900'),
+  ]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{title:{display:true,text:'Value'}},x:{grid:{display:false}}},plugins:{legend:{position:'bottom'}}}}));
+
+  // xCloud regions
+  charts.push(mkChart('c_xcloudRegion',{type:'line',data:{labels:M,datasets:[
+    areaDS('North America',D.xcloudNA,'#0078D4'),
+    areaDS('Europe',D.xcloudEU,'#7B68EE'),
+    areaDS('APAC',D.xcloudAPAC,'#FF8C00'),
+    areaDS('ROW',D.xcloudROW,'#79D9B9'),
+  ]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{stacked:true,title:{display:true,text:'MAU (M)'}},x:{grid:{display:false}}},plugins:{legend:{position:'bottom'}}}}));
+
+  // xCloud pie
+  charts.push(mkChart('c_xcloudPie',{type:'doughnut',data:{labels:['North America','Europe','APAC','ROW'],datasets:[{data:[last(D.xcloudNA),last(D.xcloudEU),last(D.xcloudAPAC),last(D.xcloudROW)],backgroundColor:['#0078D4','#7B68EE','#FF8C00','#79D9B9'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'bottom'},datalabels:{display:true,color:'#E6EDF3',font:{weight:700,size:12},formatter:(v,ctx)=>{const t=ctx.dataset.data.reduce((a,b)=>a+b,0);return (v/t*100).toFixed(0)+'%'}}}}}));
+
+  // PC GP
+  charts.push(mkChart('c_pcGP',{type:'line',data:{labels:M,datasets:[
+    {...lineDS('PC GP Subs',D.pcGPSubs,'#0078D4'),fill:true,backgroundColor:'rgba(0,120,212,.12)',borderWidth:3},
+  ]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{title:{display:true,text:'Subscribers (M)'},min:10},x:{grid:{display:false}}},plugins:{legend:{display:false}}}}));
+
+  // Cross-platform
+  charts.push(mkChart('c_crossPlat',{type:'line',data:{labels:M,datasets:[
+    {...lineDS('Cross-Platform %',D.crossPlatPct,'#FFB900'),fill:true,backgroundColor:'rgba(255,185,0,.10)',borderWidth:3},
+  ]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{title:{display:true,text:'%'},min:20,max:30},x:{grid:{display:false}}},plugins:{legend:{display:false},annotation:{annotations:{note:{type:'label',xValue:'Apr 26',yValue:28,content:['Cross-plat users','have 2.3x higher LTV'],color:'#FFB900',font:{size:10},backgroundColor:'rgba(255,185,0,.1)',borderColor:'#FFB900',borderWidth:1,borderRadius:4,padding:6}}}}}}));
+
+  // Revenue by platform
+  charts.push(mkChart('c_revPlatform',{type:'bar',data:{labels:M,datasets:[
+    barDS('Console',D.revConsole,'#107C10'),
+    barDS('PC',D.revPC,'#0078D4'),
+    barDS('Cloud',D.revCloud,'#7B68EE'),
+    barDS('Mobile',D.revMobile,'#FF8C00'),
+  ]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{stacked:true,title:{display:true,text:'Revenue ($M)'}},x:{stacked:true,grid:{display:false}}},plugins:{legend:{position:'bottom'}}}}));
+
+  // ARPU
+  charts.push(mkChart('c_arpu',{type:'line',data:{labels:M,datasets:[
+    lineDS('Console',D.arpuConsole,'#107C10'),
+    lineDS('PC',D.arpuPC,'#0078D4'),
+    lineDS('Cloud',D.arpuCloud,'#7B68EE'),
+    lineDS('Mobile',D.arpuMobile,'#FF8C00'),
+  ]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{title:{display:true,text:'ARPU ($)'},min:0},x:{grid:{display:false}}},plugins:{legend:{position:'bottom'}}}}));
+
+  // App DAU
+  charts.push(mkChart('c_appDAU',{type:'line',data:{labels:M,datasets:[
+    lineDS('Mobile App',D.appDAU_mobile,'#FF8C00'),
+    lineDS('PC App',D.appDAU_pc,'#0078D4'),
+  ]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{title:{display:true,text:'DAU (M)'}},x:{grid:{display:false}}},plugins:{legend:{position:'bottom'}}}}));
+
+  // Session length
+  charts.push(mkChart('c_session',{type:'bar',data:{labels:M,datasets:[
+    {...barDS('Avg Session',D.avgSessionMin,'#49CCF9'),borderRadius:4},
+  ]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{title:{display:true,text:'Minutes'},min:45},x:{grid:{display:false}}},plugins:{legend:{display:false}}}}));
+
+  // Retention
+  charts.push(mkChart('c_retention',{type:'line',data:{labels:M,datasets:[
+    {...lineDS('D30 Retention',D.d30Retention,'#107C10'),fill:true,backgroundColor:'rgba(16,124,16,.10)',borderWidth:3},
+  ]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{title:{display:true,text:'%'},min:38,max:50},x:{grid:{display:false}}},plugins:{legend:{display:false}}}}));
+}
+
+function renderGamePassCharts(){
+  const gpPC_fromTotal = D.gpTotal.map((v,i)=>v - D.gpUltimate[i] - D.gpCore[i]);
+  charts.push(mkChart('c_gpTiers',{type:'line',data:{labels:M,datasets:[
+    areaDS('Ultimate',D.gpUltimate,'#7B68EE'),
+    areaDS('Core',D.gpCore,'#107C10'),
+    areaDS('PC Game Pass',gpPC_fromTotal,'#0078D4'),
+  ]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{stacked:true,title:{display:true,text:'Subscribers (M)'}},x:{grid:{display:false}}},plugins:{legend:{position:'bottom'}}}}));
+
+  charts.push(mkChart('c_gpPC',{type:'line',data:{labels:M,datasets:[
+    {...lineDS('PC GP Subs',D.pcGPSubs,'#0078D4'),fill:true,backgroundColor:'rgba(0,120,212,.12)',borderWidth:3},
+  ]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{title:{display:true,text:'M'},min:10},x:{grid:{display:false}}},plugins:{legend:{display:false}}}}));
+
+  // GP platform distribution (latest month)
+  const gpPlatData = [38,28,26,8]; // Console, PC, Cross-platform, Cloud
+  charts.push(mkChart('c_gpPlatDist',{type:'doughnut',data:{labels:['Console Only','PC Only','Cross-Platform','Cloud Only'],datasets:[{data:gpPlatData,backgroundColor:['#107C10','#0078D4','#FFB900','#7B68EE'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'bottom'},datalabels:{display:true,color:'#E6EDF3',font:{weight:700,size:13},formatter:(v)=>v+'%'}}}}));
+
+  // GP revenue impact
+  const gpRev = D.gpTotal.map((v,i)=>v * 10.5 + (i>5?50:0));
+  charts.push(mkChart('c_gpRev',{type:'bar',data:{labels:M,datasets:[
+    {...barDS('GP Revenue Est.',gpRev,'#0078D4'),borderRadius:4},
+  ]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{title:{display:true,text:'$M'}},x:{grid:{display:false}}},plugins:{legend:{display:false}}}}));
+}
+
+function renderGameCharts(key){
+  const g = D.games[key];
+  const p = g.platforms;
+  const hasMobile = !!p.mobile;
+
+  // MAU
+  charts.push(mkChart(`c_g_mau_${key}`,{type:'line',data:{labels:M,datasets:[
+    {...lineDS(g.name+' MAU',g.mau,g.color),fill:true,backgroundColor:g.color+'18',borderWidth:3},
+  ]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{title:{display:true,text:'MAU (M)'}},x:{grid:{display:false}}},plugins:{legend:{display:false}}}}));
+
+  // Platform mix stacked
+  const dsPlat = [
+    barDS('Series X|S',p.seriesXS,'#107C10'),
+    barDS('Xbox One',p.xboxOne,'#10893E'),
+    barDS('PC',p.pc,'#0078D4'),
+    barDS('Cloud',p.cloud,'#7B68EE'),
+  ];
+  if(hasMobile) dsPlat.push(barDS('Mobile',p.mobile,'#FF8C00'));
+  charts.push(mkChart(`c_g_plat_${key}`,{type:'bar',data:{labels:M,datasets:dsPlat},options:{responsive:true,maintainAspectRatio:false,scales:{y:{stacked:true,max:100,title:{display:true,text:'% Share'}},x:{stacked:true,grid:{display:false}}},plugins:{legend:{position:'bottom'}}}}));
+
+  // Revenue
+  charts.push(mkChart(`c_g_rev_${key}`,{type:'bar',data:{labels:M,datasets:[
+    {...barDS('Revenue',g.rev,g.color),borderRadius:4},
+  ]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{title:{display:true,text:'$M'}},x:{grid:{display:false}}},plugins:{legend:{display:false}}}}));
+
+  // Retention
+  charts.push(mkChart(`c_g_ret_${key}`,{type:'line',data:{labels:M,datasets:[
+    {...lineDS('D30 Retention',g.retention,g.color),fill:true,backgroundColor:g.color+'15',borderWidth:3},
+  ]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{title:{display:true,text:'%'}},x:{grid:{display:false}}},plugins:{legend:{display:false}}}}));
+}
+
+// ── TAB SWITCHING ──
+const TABS = {
+  total:    {build:buildTotalTab, render:renderTotalCharts},
+  gamepass: {build:buildGamePassTab, render:renderGamePassCharts},
+  halo:    {build:()=>buildGameTab('halo'), render:()=>renderGameCharts('halo')},
+  forza:   {build:()=>buildGameTab('forza'), render:()=>renderGameCharts('forza')},
+  cod:     {build:()=>buildGameTab('cod'), render:()=>renderGameCharts('cod')},
+  minecraft:{build:()=>buildGameTab('minecraft'), render:()=>renderGameCharts('minecraft')},
+  sot:     {build:()=>buildGameTab('sot'), render:()=>renderGameCharts('sot')},
+  starfield:{build:()=>buildGameTab('starfield'), render:()=>renderGameCharts('starfield')},
+};
+
+function switchTab(tab){
+  destroyCharts();
+  document.querySelectorAll('.sidebar-item').forEach(el=>el.classList.remove('active'));
+  const items = document.querySelectorAll('.sidebar-item');
+  const tabKeys = Object.keys(TABS);
+  const idx = tabKeys.indexOf(tab);
+  if(idx>=0 && items[idx]) items[idx].classList.add('active');
+  const main = document.getElementById('mainContent');
+  main.innerHTML = TABS[tab].build();
+  requestAnimationFrame(()=>TABS[tab].render());
+}
+
+// Init
+switchTab('total');
+</script>
+</body>
+</html>

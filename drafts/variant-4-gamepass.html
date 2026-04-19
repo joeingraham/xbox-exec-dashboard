@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Xbox Executive Dashboard — Game Pass Economics</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<style>
+:root {
+  --bg: #0D1117; --card: #161B22; --border: #21262D; --text: #E6EDF3;
+  --text-secondary: #8B949E; --text-muted: #484F58;
+  --green: #107C10; --green-mid: #10893E; --green-light: #7FBA00;
+  --blue: #0078D4; --purple: #7B68EE; --orange: #FF8C00;
+  --red: #E81123; --gold: #FFB900; --teal: #00B7C3;
+  --sidebar-w: 220px; --header-h: 56px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Inter',system-ui,sans-serif; background:var(--bg); color:var(--text); overflow-x:hidden; }
+
+/* HEADER */
+.header { position:fixed; top:0; left:0; right:0; height:var(--header-h); background:var(--card);
+  border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 24px; z-index:100; }
+.header-logo { display:flex; align-items:center; gap:12px; }
+.header-logo svg { width:32px; height:32px; }
+.header-title { font-size:18px; font-weight:700; letter-spacing:-0.3px; }
+.header-title span { color:var(--green); }
+.header-badge { background:var(--purple); color:#fff; font-size:10px; font-weight:700; padding:3px 8px;
+  border-radius:10px; margin-left:12px; text-transform:uppercase; letter-spacing:0.5px; }
+.header-right { margin-left:auto; display:flex; align-items:center; gap:16px; }
+.header-date { color:var(--text-secondary); font-size:13px; }
+.header-status { width:8px; height:8px; border-radius:50%; background:#3FB950; }
+
+/* SIDEBAR */
+.sidebar { position:fixed; top:var(--header-h); left:0; width:var(--sidebar-w); height:calc(100vh - var(--header-h));
+  background:var(--card); border-right:1px solid var(--border); padding:16px 0; overflow-y:auto; z-index:90; }
+.sidebar-section { padding:0 16px; margin-bottom:8px; }
+.sidebar-section-title { font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase;
+  letter-spacing:1px; margin-bottom:8px; padding:0 8px; }
+.nav-item { display:flex; align-items:center; gap:10px; padding:8px 12px; margin:2px 8px; border-radius:6px;
+  cursor:pointer; font-size:13px; font-weight:500; color:var(--text-secondary); transition:all 0.15s; user-select:none; }
+.nav-item:hover { background:var(--border); color:var(--text); }
+.nav-item.active { background:rgba(16,124,16,0.15); color:var(--green-light); }
+.nav-item .nav-icon { width:18px; text-align:center; font-size:14px; }
+.nav-item .nav-dot { width:6px; height:6px; border-radius:50%; margin-left:auto; }
+
+/* MAIN */
+.main { margin-left:var(--sidebar-w); margin-top:var(--header-h); padding:24px; min-height:calc(100vh - var(--header-h)); }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+
+/* PAGE HEADER */
+.page-header { margin-bottom:24px; }
+.page-header h1 { font-size:24px; font-weight:800; letter-spacing:-0.5px; margin-bottom:4px; }
+.page-header p { color:var(--text-secondary); font-size:14px; }
+
+/* KPI ROW */
+.kpi-row { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:24px; }
+.kpi-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; position:relative; overflow:hidden; }
+.kpi-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
+.kpi-card.green::before { background:var(--green); }
+.kpi-card.blue::before { background:var(--blue); }
+.kpi-card.purple::before { background:var(--purple); }
+.kpi-card.orange::before { background:var(--orange); }
+.kpi-card.gold::before { background:var(--gold); }
+.kpi-card.red::before { background:var(--red); }
+.kpi-card.teal::before { background:var(--teal); }
+.kpi-label { font-size:11px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; }
+.kpi-value { font-size:28px; font-weight:800; letter-spacing:-1px; line-height:1; }
+.kpi-sub { font-size:12px; color:var(--text-secondary); margin-top:6px; display:flex; align-items:center; gap:4px; }
+.kpi-sub .up { color:#3FB950; } .kpi-sub .down { color:var(--red); } .kpi-sub .flat { color:var(--gold); }
+
+/* CHART GRID */
+.chart-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; margin-bottom:24px; }
+.chart-grid.cols-3 { grid-template-columns:repeat(3,1fr); }
+.chart-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; }
+.chart-card.full { grid-column:1/-1; }
+.chart-card.span-2 { grid-column:span 2; }
+.chart-title { font-size:14px; font-weight:700; margin-bottom:4px; display:flex; align-items:center; gap:8px; }
+.chart-subtitle { font-size:11px; color:var(--text-secondary); margin-bottom:16px; }
+.chart-wrap { position:relative; height:280px; }
+.chart-wrap.tall { height:360px; }
+.chart-wrap.short { height:220px; }
+
+/* TABLE */
+.data-table { width:100%; border-collapse:collapse; font-size:13px; }
+.data-table th { text-align:left; padding:10px 12px; color:var(--text-secondary); font-weight:600;
+  font-size:11px; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--border); }
+.data-table td { padding:10px 12px; border-bottom:1px solid var(--border); }
+.data-table tr:hover td { background:rgba(255,255,255,0.02); }
+.pill { padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+.pill.green { background:rgba(63,185,80,0.15); color:#3FB950; }
+.pill.red { background:rgba(232,17,35,0.15); color:#FF6B6B; }
+.pill.gold { background:rgba(255,185,0,0.15); color:var(--gold); }
+.pill.blue { background:rgba(0,120,212,0.15); color:#58A6FF; }
+
+/* SECTION DIVIDER */
+.section-divider { font-size:16px; font-weight:700; margin:32px 0 16px; padding-bottom:8px;
+  border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; }
+.section-divider .dot { width:8px; height:8px; border-radius:50%; }
+
+/* RESPONSIVE */
+@media(max-width:1200px){ .chart-grid{ grid-template-columns:1fr; } .chart-card.span-2{ grid-column:span 1; } }
+@media(max-width:900px){ .sidebar{ display:none; } .main{ margin-left:0; } }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width:6px; } ::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-logo">
+    <svg viewBox="0 0 32 32" fill="none"><path d="M16 2C8.268 2 2 8.268 2 16s6.268 14 14 14 14-6.268 14-14S23.732 2 16 2z" fill="#107C10"/>
+    <path d="M8.5 24.5c-1.2-1.5-2-3.8-2-6 0-4 2.5-7.5 5-9.5 1-.8 2.3-1.5 3-1.5.5 0 .8.2 1 .5-2.5 2-5 6-5 10.5 0 2.5.5 4.5 1.5 6-.8 0-2-.3-3.5 0z" fill="rgba(255,255,255,0.9)"/>
+    <path d="M23.5 24.5c1.2-1.5 2-3.8 2-6 0-4-2.5-7.5-5-9.5-1-.8-2.3-1.5-3-1.5-.5 0-.8.2-1 .5 2.5 2 5 6 5 10.5 0 2.5-.5 4.5-1.5 6 .8 0 2-.3 3.5 0z" fill="rgba(255,255,255,0.9)"/>
+    </svg>
+    <span class="header-title"><span>Xbox</span> Executive Dashboard</span>
+    <span class="header-badge">Variant 4 · Game Pass</span>
+  </div>
+  <div class="header-right">
+    <span class="header-date" id="headerDate"></span>
+    <span class="header-status" title="Live Data"></span>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">Overview</div>
+    <div class="nav-item active" onclick="switchTab('total')"><span class="nav-icon">📊</span>Total Xbox</div>
+    <div class="nav-item" onclick="switchTab('gamepass')"><span class="nav-icon">🎮</span>Game Pass<span class="nav-dot" style="background:var(--green)"></span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">Game Titles</div>
+    <div class="nav-item" onclick="switchTab('halo')"><span class="nav-icon">⚔️</span>Halo</div>
+    <div class="nav-item" onclick="switchTab('forza')"><span class="nav-icon">🏎️</span>Forza</div>
+    <div class="nav-item" onclick="switchTab('cod')"><span class="nav-icon">🎯</span>Call of Duty</div>
+    <div class="nav-item" onclick="switchTab('minecraft')"><span class="nav-icon">⛏️</span>Minecraft</div>
+    <div class="nav-item" onclick="switchTab('sot')"><span class="nav-icon">🏴‍☠️</span>Sea of Thieves</div>
+    <div class="nav-item" onclick="switchTab('starfield')"><span class="nav-icon">🚀</span>Starfield</div>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="main">
+
+<!-- ==================== TOTAL XBOX TAB ==================== -->
+<div class="tab-content active" id="tab-total">
+  <div class="page-header">
+    <h1>Total Xbox Overview</h1>
+    <p>Consolidated performance across all Xbox businesses · FY26 May 2025 – Apr 2026</p>
+  </div>
+  <div class="kpi-row">
+    <div class="kpi-card green"><div class="kpi-label">Total Revenue</div><div class="kpi-value">$21.4B</div><div class="kpi-sub"><span class="up">▲ 14%</span> YoY</div></div>
+    <div class="kpi-card blue"><div class="kpi-label">Game Pass Subs</div><div class="kpi-value">35.2M</div><div class="kpi-sub"><span class="up">▲ 18%</span> YoY</div></div>
+    <div class="kpi-card purple"><div class="kpi-label">Monthly Active Users</div><div class="kpi-value">142M</div><div class="kpi-sub"><span class="up">▲ 8%</span> YoY</div></div>
+    <div class="kpi-card orange"><div class="kpi-label">Avg Engagement</div><div class="kpi-value">4.2hrs</div><div class="kpi-sub"><span class="up">▲ 6%</span> per user/day</div></div>
+    <div class="kpi-card gold"><div class="kpi-label">MTX Revenue</div><div class="kpi-value">$5.8B</div><div class="kpi-sub"><span class="up">▲ 22%</span> YoY</div></div>
+    <div class="kpi-card teal"><div class="kpi-label">Content Spend</div><div class="kpi-value">$3.1B</div><div class="kpi-sub"><span class="up">▲ 11%</span> YoY</div></div>
+  </div>
+
+  <div class="section-divider"><span class="dot" style="background:var(--green)"></span>Growth</div>
+  <div class="chart-grid">
+    <div class="chart-card"><div class="chart-title">Revenue by Segment</div><div class="chart-subtitle">Quarterly breakdown · $B</div><div class="chart-wrap"><canvas id="totalRevSegment"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">MAU Trend</div><div class="chart-subtitle">Monthly active users · M</div><div class="chart-wrap"><canvas id="totalMAU"></canvas></div></div>
+  </div>
+
+  <div class="section-divider"><span class="dot" style="background:var(--blue)"></span>Engagement</div>
+  <div class="chart-grid">
+    <div class="chart-card"><div class="chart-title">Engagement Hours by Platform</div><div class="chart-subtitle">Console vs PC vs Cloud · B hours</div><div class="chart-wrap"><canvas id="totalEngagement"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">D30 Retention by Cohort</div><div class="chart-subtitle">% returning after 30 days</div><div class="chart-wrap"><canvas id="totalRetention"></canvas></div></div>
+  </div>
+
+  <div class="section-divider"><span class="dot" style="background:var(--purple)"></span>Monetization</div>
+  <div class="chart-grid">
+    <div class="chart-card"><div class="chart-title">ARPU Trend</div><div class="chart-subtitle">Average revenue per user · $/month</div><div class="chart-wrap"><canvas id="totalARPU"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">Revenue Mix</div><div class="chart-subtitle">Subscriptions vs MTX vs First-Party vs Other</div><div class="chart-wrap"><canvas id="totalRevMix"></canvas></div></div>
+  </div>
+</div>
+
+<!-- ==================== GAME PASS TAB ==================== -->
+<div class="tab-content" id="tab-gamepass">
+  <div class="page-header">
+    <h1>🎮 Game Pass Deep Dive</h1>
+    <p>Subscriber economics, content ROI, and engagement analysis · FY26</p>
+  </div>
+  <div class="kpi-row">
+    <div class="kpi-card green"><div class="kpi-label">Total Subscribers</div><div class="kpi-value">35.2M</div><div class="kpi-sub"><span class="up">▲ 18%</span> vs prior year</div></div>
+    <div class="kpi-card blue"><div class="kpi-label">ARPU (w/ MTX)</div><div class="kpi-value">$16.42</div><div class="kpi-sub"><span class="up">▲ 9%</span> blended</div></div>
+    <div class="kpi-card purple"><div class="kpi-label">Monthly Churn</div><div class="kpi-value">4.8%</div><div class="kpi-sub"><span class="down">▼ 0.6pp</span> vs prior year</div></div>
+    <div class="kpi-card orange"><div class="kpi-label">Trial→Paid</div><div class="kpi-value">42%</div><div class="kpi-sub"><span class="up">▲ 3pp</span> conversion rate</div></div>
+    <div class="kpi-card gold"><div class="kpi-label">Catalog Titles</div><div class="kpi-value">482</div><div class="kpi-sub"><span class="up">▲ 34</span> net adds LTM</div></div>
+    <div class="kpi-card teal"><div class="kpi-label">Content Cost Ratio</div><div class="kpi-value">0.52x</div><div class="kpi-sub"><span class="up">▲</span> improving margin</div></div>
+  </div>
+
+  <!-- SUBSCRIBER ECONOMICS -->
+  <div class="section-divider"><span class="dot" style="background:var(--green)"></span>Subscriber Economics</div>
+  <div class="chart-grid">
+    <div class="chart-card span-2"><div class="chart-title">📈 Subscriber Count by Tier</div><div class="chart-subtitle">Core · Standard · Ultimate — stacked area · M subscribers</div><div class="chart-wrap tall"><canvas id="gpSubsByTier"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">📊 Net Subscriber Adds</div><div class="chart-subtitle">New · returning · churned · net per month · K</div><div class="chart-wrap tall"><canvas id="gpNetAdds"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">🔄 Trial-to-Paid Conversion</div><div class="chart-subtitle">% converting from $1 trial within 60 days</div><div class="chart-wrap"><canvas id="gpTrialConversion"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">📉 Churn Rate by Tier</div><div class="chart-subtitle">Monthly voluntary churn %</div><div class="chart-wrap"><canvas id="gpChurnByTier"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">💰 Revenue per Subscriber</div><div class="chart-subtitle">ARPU incl. MTX upsell by tier · $/mo</div><div class="chart-wrap"><canvas id="gpARPU"></canvas></div></div>
+  </div>
+
+  <!-- CONTENT & CATALOG -->
+  <div class="section-divider"><span class="dot" style="background:var(--blue)"></span>Content & Catalog</div>
+  <div class="chart-grid">
+    <div class="chart-card"><div class="chart-title">📚 Content Library Size</div><div class="chart-subtitle">Total titles available on Game Pass</div><div class="chart-wrap"><canvas id="gpLibrarySize"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">🆕 Catalog Freshness</div><div class="chart-subtitle">% of library added in last 90 days</div><div class="chart-wrap"><canvas id="gpCatalogFreshness"></canvas></div></div>
+    <div class="chart-card span-2"><div class="chart-title">🎯 Day-One Titles Impact</div><div class="chart-subtitle">Metacritic score vs subscriber spike (bubble size = hours played in first 14 days)</div><div class="chart-wrap tall"><canvas id="gpDayOneImpact"></canvas></div></div>
+  </div>
+
+  <!-- FINANCIAL -->
+  <div class="section-divider"><span class="dot" style="background:var(--gold)"></span>Financial Performance</div>
+  <div class="chart-grid">
+    <div class="chart-card span-2"><div class="chart-title">💵 Content Cost vs Subscription Revenue</div><div class="chart-subtitle">Dual axis — content acquisition spend vs subscription revenue · $M/mo</div><div class="chart-wrap tall"><canvas id="gpCostVsRev"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">🛒 Cannibalization Analysis</div><div class="chart-subtitle">% of GP plays that would have been retail purchases</div><div class="chart-wrap"><canvas id="gpCannibalization"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">📊 GP Revenue Waterfall</div><div class="chart-subtitle">Sub revenue + MTX uplift − content cost = margin</div><div class="chart-wrap"><canvas id="gpRevenueWaterfall"></canvas></div></div>
+  </div>
+
+  <!-- ENGAGEMENT -->
+  <div class="section-divider"><span class="dot" style="background:var(--purple)"></span>Engagement</div>
+  <div class="chart-grid">
+    <div class="chart-card"><div class="chart-title">🏆 Top Played Game Pass Titles</div><div class="chart-subtitle">Hours played in last 30 days · M hours</div><div class="chart-wrap tall"><canvas id="gpTopPlayed"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">⚡ Engagement Lift</div><div class="chart-subtitle">Minutes/user/day — GP subscribers vs non-subscribers</div><div class="chart-wrap tall"><canvas id="gpEngagementLift"></canvas></div></div>
+  </div>
+</div>
+
+<!-- ==================== GAME TITLE TABS ==================== -->
+<div class="tab-content" id="tab-halo">
+  <div class="page-header"><h1>⚔️ Halo Franchise</h1><p>Halo Infinite & Master Chief Collection · Game Pass performance</p></div>
+  <div class="kpi-row">
+    <div class="kpi-card green"><div class="kpi-label">GP MAU</div><div class="kpi-value">3.8M</div><div class="kpi-sub"><span class="up">▲ 12%</span> MoM</div></div>
+    <div class="kpi-card blue"><div class="kpi-label">% via Game Pass</div><div class="kpi-value">68%</div><div class="kpi-sub">of total Halo players</div></div>
+    <div class="kpi-card purple"><div class="kpi-label">MTX ARPU</div><div class="kpi-value">$4.20</div><div class="kpi-sub"><span class="up">▲ 15%</span> GP users</div></div>
+    <div class="kpi-card orange"><div class="kpi-label">Avg Session</div><div class="kpi-value">47min</div><div class="kpi-sub"><span class="up">▲ 8%</span> vs non-GP</div></div>
+  </div>
+  <div class="chart-grid">
+    <div class="chart-card"><div class="chart-title">Halo MAU via Game Pass</div><div class="chart-subtitle">Monthly active users · M</div><div class="chart-wrap"><canvas id="haloMAU"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">Halo MTX Revenue Split</div><div class="chart-subtitle">GP subs vs retail owners · $M</div><div class="chart-wrap"><canvas id="haloMTX"></canvas></div></div>
+  </div>
+</div>
+
+<div class="tab-content" id="tab-forza">
+  <div class="page-header"><h1>🏎️ Forza Franchise</h1><p>Forza Horizon 5 & Motorsport · Game Pass performance</p></div>
+  <div class="kpi-row">
+    <div class="kpi-card green"><div class="kpi-label">GP MAU</div><div class="kpi-value">5.1M</div><div class="kpi-sub"><span class="up">▲ 9%</span> MoM</div></div>
+    <div class="kpi-card blue"><div class="kpi-label">% via Game Pass</div><div class="kpi-value">72%</div><div class="kpi-sub">of total Forza players</div></div>
+    <div class="kpi-card purple"><div class="kpi-label">MTX ARPU</div><div class="kpi-value">$6.80</div><div class="kpi-sub"><span class="up">▲ 18%</span> GP users</div></div>
+    <div class="kpi-card orange"><div class="kpi-label">Avg Session</div><div class="kpi-value">52min</div><div class="kpi-sub"><span class="up">▲ 11%</span> vs non-GP</div></div>
+  </div>
+  <div class="chart-grid">
+    <div class="chart-card"><div class="chart-title">Forza MAU via Game Pass</div><div class="chart-subtitle">Monthly active users · M</div><div class="chart-wrap"><canvas id="forzaMAU"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">Forza DLC Attach Rate</div><div class="chart-subtitle">GP subs vs retail owners · %</div><div class="chart-wrap"><canvas id="forzaDLC"></canvas></div></div>
+  </div>
+</div>
+
+<div class="tab-content" id="tab-cod">
+  <div class="page-header"><h1>🎯 Call of Duty</h1><p>CoD: Modern Warfare III & Warzone · Game Pass performance</p></div>
+  <div class="kpi-row">
+    <div class="kpi-card green"><div class="kpi-label">GP MAU</div><div class="kpi-value">8.4M</div><div class="kpi-sub"><span class="up">▲ 24%</span> post-GP launch</div></div>
+    <div class="kpi-card blue"><div class="kpi-label">% via Game Pass</div><div class="kpi-value">45%</div><div class="kpi-sub">of total CoD players</div></div>
+    <div class="kpi-card purple"><div class="kpi-label">MTX ARPU</div><div class="kpi-value">$11.40</div><div class="kpi-sub"><span class="up">▲ 28%</span> GP users</div></div>
+    <div class="kpi-card orange"><div class="kpi-label">Sub Spike</div><div class="kpi-value">+1.2M</div><div class="kpi-sub">new subs at CoD launch</div></div>
+  </div>
+  <div class="chart-grid">
+    <div class="chart-card"><div class="chart-title">CoD Player Funnel via GP</div><div class="chart-subtitle">Trial → Sub → MTX buyer · M users</div><div class="chart-wrap"><canvas id="codFunnel"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">CoD MTX Uplift from GP</div><div class="chart-subtitle">Spend per user — GP vs retail · $/mo</div><div class="chart-wrap"><canvas id="codMTX"></canvas></div></div>
+  </div>
+</div>
+
+<div class="tab-content" id="tab-minecraft">
+  <div class="page-header"><h1>⛏️ Minecraft</h1><p>Minecraft Bedrock & Java · Game Pass performance</p></div>
+  <div class="kpi-row">
+    <div class="kpi-card green"><div class="kpi-label">GP MAU</div><div class="kpi-value">12.3M</div><div class="kpi-sub"><span class="up">▲ 6%</span> MoM</div></div>
+    <div class="kpi-card blue"><div class="kpi-label">% via Game Pass</div><div class="kpi-value">38%</div><div class="kpi-sub">of total Minecraft players</div></div>
+    <div class="kpi-card purple"><div class="kpi-label">Marketplace ARPU</div><div class="kpi-value">$3.10</div><div class="kpi-sub"><span class="up">▲ 7%</span> GP users</div></div>
+    <div class="kpi-card orange"><div class="kpi-label">Avg Session</div><div class="kpi-value">68min</div><div class="kpi-sub">longest of all GP titles</div></div>
+  </div>
+  <div class="chart-grid">
+    <div class="chart-card"><div class="chart-title">Minecraft MAU via Game Pass</div><div class="chart-subtitle">Monthly active users · M</div><div class="chart-wrap"><canvas id="mcMAU"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">Minecraft Marketplace Revenue</div><div class="chart-subtitle">GP vs non-GP buyers · $M</div><div class="chart-wrap"><canvas id="mcMarketplace"></canvas></div></div>
+  </div>
+</div>
+
+<div class="tab-content" id="tab-sot">
+  <div class="page-header"><h1>🏴‍☠️ Sea of Thieves</h1><p>PS5 expansion impact on Game Pass · FY26</p></div>
+  <div class="kpi-row">
+    <div class="kpi-card green"><div class="kpi-label">GP MAU</div><div class="kpi-value">2.1M</div><div class="kpi-sub"><span class="up">▲ 31%</span> MoM</div></div>
+    <div class="kpi-card blue"><div class="kpi-label">% via Game Pass</div><div class="kpi-value">74%</div><div class="kpi-sub">of Xbox SoT players</div></div>
+    <div class="kpi-card purple"><div class="kpi-label">MTX ARPU</div><div class="kpi-value">$5.60</div><div class="kpi-sub"><span class="up">▲ 22%</span> GP users</div></div>
+    <div class="kpi-card orange"><div class="kpi-label">Avg Session</div><div class="kpi-value">72min</div><div class="kpi-sub"><span class="up">▲ 14%</span> vs non-GP</div></div>
+  </div>
+  <div class="chart-grid">
+    <div class="chart-card"><div class="chart-title">Sea of Thieves MAU via Game Pass</div><div class="chart-subtitle">Monthly active users · M</div><div class="chart-wrap"><canvas id="sotMAU"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">SoT Emporium Revenue</div><div class="chart-subtitle">GP vs retail · $M</div><div class="chart-wrap"><canvas id="sotMTX"></canvas></div></div>
+  </div>
+</div>
+
+<div class="tab-content" id="tab-starfield">
+  <div class="page-header"><h1>🚀 Starfield</h1><p>Starfield & Shattered Space DLC · Game Pass performance</p></div>
+  <div class="kpi-row">
+    <div class="kpi-card green"><div class="kpi-label">GP MAU</div><div class="kpi-value">4.6M</div><div class="kpi-sub"><span class="up">▲ 16%</span> post-DLC</div></div>
+    <div class="kpi-card blue"><div class="kpi-label">% via Game Pass</div><div class="kpi-value">81%</div><div class="kpi-sub">of total Starfield players</div></div>
+    <div class="kpi-card purple"><div class="kpi-label">Creation Club ARPU</div><div class="kpi-value">$2.40</div><div class="kpi-sub"><span class="up">▲ 5%</span> GP users</div></div>
+    <div class="kpi-card orange"><div class="kpi-label">D90 Retention</div><div class="kpi-value">34%</div><div class="kpi-sub"><span class="up">▲ 4pp</span> vs launch</div></div>
+  </div>
+  <div class="chart-grid">
+    <div class="chart-card"><div class="chart-title">Starfield MAU via Game Pass</div><div class="chart-subtitle">Monthly active users · M</div><div class="chart-wrap"><canvas id="sfMAU"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">Starfield DLC Attach Rate</div><div class="chart-subtitle">GP vs retail owners · %</div><div class="chart-wrap"><canvas id="sfDLC"></canvas></div></div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<script>
+// ============ GLOBALS ============
+Chart.defaults.color = '#8B949E';
+Chart.defaults.borderColor = '#21262D';
+Chart.defaults.font.family = 'Inter';
+Chart.defaults.font.size = 11;
+Chart.defaults.plugins.legend.labels.usePointStyle = true;
+Chart.defaults.plugins.legend.labels.pointStyleWidth = 8;
+Chart.defaults.plugins.legend.labels.padding = 16;
+Chart.defaults.plugins.tooltip.backgroundColor = '#1C2128';
+Chart.defaults.plugins.tooltip.borderColor = '#21262D';
+Chart.defaults.plugins.tooltip.borderWidth = 1;
+Chart.defaults.plugins.tooltip.cornerRadius = 8;
+Chart.defaults.plugins.tooltip.padding = 10;
+Chart.register(ChartDataLabels);
+Chart.defaults.plugins.datalabels.display = false;
+
+const MONTHS = ['May 25','Jun 25','Jul 25','Aug 25','Sep 25','Oct 25','Nov 25','Dec 25','Jan 26','Feb 26','Mar 26','Apr 26'];
+const GREEN = '#107C10', GREEN2 = '#10893E', GREEN3 = '#7FBA00';
+const BLUE = '#0078D4', PURPLE = '#7B68EE', ORANGE = '#FF8C00';
+const RED = '#E81123', GOLD = '#FFB900', TEAL = '#00B7C3';
+
+document.getElementById('headerDate').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+// ============ TAB SWITCHING ============
+function switchTab(id) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  // lazy-init charts
+  if (id === 'total' && !window._totalInit) { initTotal(); window._totalInit = true; }
+  if (id === 'gamepass' && !window._gpInit) { initGamePass(); window._gpInit = true; }
+  if (id === 'halo' && !window._haloInit) { initHalo(); window._haloInit = true; }
+  if (id === 'forza' && !window._forzaInit) { initForza(); window._forzaInit = true; }
+  if (id === 'cod' && !window._codInit) { initCoD(); window._codInit = true; }
+  if (id === 'minecraft' && !window._mcInit) { initMinecraft(); window._mcInit = true; }
+  if (id === 'sot' && !window._sotInit) { initSoT(); window._sotInit = true; }
+  if (id === 'starfield' && !window._sfInit) { initStarfield(); window._sfInit = true; }
+}
+
+function mkChart(id, cfg) {
+  const ctx = document.getElementById(id);
+  if (!ctx) return null;
+  return new Chart(ctx.getContext('2d'), cfg);
+}
+
+function gradient(ctx, c1, c2, h) {
+  const g = ctx.createLinearGradient(0,0,0,h||300);
+  g.addColorStop(0, c1); g.addColorStop(1, c2);
+  return g;
+}
+
+function alpha(hex, a) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// ============ TOTAL XBOX ============
+function initTotal() {
+  // Revenue by Segment
+  mkChart('totalRevSegment', { type:'bar', data:{ labels:['Q1 FY26','Q2 FY26','Q3 FY26','Q4 FY26'],
+    datasets:[
+      { label:'Game Pass', data:[1.42,1.58,1.71,1.85], backgroundColor:GREEN },
+      { label:'First-Party', data:[1.1,1.4,1.2,1.3], backgroundColor:BLUE },
+      { label:'Third-Party/MTX', data:[1.3,1.6,1.4,1.5], backgroundColor:PURPLE },
+      { label:'Hardware', data:[0.8,1.1,0.7,0.9], backgroundColor:ORANGE },
+    ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}},
+    scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>'$'+v+'B'}}} }});
+
+  // MAU Trend
+  mkChart('totalMAU', { type:'line', data:{ labels:MONTHS,
+    datasets:[{ label:'MAU', data:[128,130,132,135,134,137,140,145,142,139,141,142],
+      borderColor:GREEN, backgroundColor:alpha(GREEN,0.1), fill:true, tension:0.4, pointRadius:3 }]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+    scales:{x:{grid:{display:false}},y:{min:120,ticks:{callback:v=>v+'M'}}} }});
+
+  // Engagement Hours
+  mkChart('totalEngagement', { type:'bar', data:{ labels:MONTHS,
+    datasets:[
+      { label:'Console', data:[2.1,2.0,2.2,2.3,2.1,2.2,2.4,2.8,2.5,2.3,2.4,2.4], backgroundColor:GREEN },
+      { label:'PC', data:[0.9,0.9,1.0,1.1,1.0,1.1,1.2,1.3,1.2,1.1,1.1,1.2], backgroundColor:BLUE },
+      { label:'Cloud', data:[0.2,0.2,0.3,0.3,0.3,0.3,0.4,0.4,0.4,0.3,0.4,0.4], backgroundColor:PURPLE },
+    ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}},
+    scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>v+'B hrs'}}} }});
+
+  // D30 Retention
+  mkChart('totalRetention', { type:'line', data:{ labels:MONTHS,
+    datasets:[
+      { label:'Game Pass', data:[62,63,64,63,65,66,67,68,67,66,67,68], borderColor:GREEN, tension:0.3, pointRadius:3 },
+      { label:'Non-GP', data:[41,42,41,42,43,43,44,44,43,43,44,44], borderColor:ORANGE, tension:0.3, pointRadius:3 },
+    ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}},
+    scales:{x:{grid:{display:false}},y:{min:30,max:75,ticks:{callback:v=>v+'%'}}} }});
+
+  // ARPU
+  mkChart('totalARPU', { type:'line', data:{ labels:MONTHS,
+    datasets:[{ label:'ARPU', data:[12.4,12.6,12.8,13.0,12.9,13.2,13.5,14.1,13.8,13.4,13.6,13.8],
+      borderColor:GOLD, backgroundColor:alpha(GOLD,0.1), fill:true, tension:0.4, pointRadius:3 }]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+    scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>'$'+v}}} }});
+
+  // Rev Mix (doughnut)
+  mkChart('totalRevMix', { type:'doughnut', data:{ labels:['Subscriptions','MTX','First-Party Sales','Hardware','Other'],
+    datasets:[{ data:[31,27,22,14,6], backgroundColor:[GREEN,PURPLE,BLUE,ORANGE,TEAL],
+      borderWidth:0, hoverOffset:8 }]},
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'65%',
+    plugins:{legend:{position:'bottom'},datalabels:{display:true,color:'#E6EDF3',font:{weight:'bold',size:12},
+      formatter:(v)=>v+'%'}} }});
+}
+
+// ============ GAME PASS DEEP DIVE ============
+function initGamePass() {
+  // 1. Subscriber Count by Tier (Stacked Area)
+  const coreSubs =     [14.2,14.5,14.8,15.0,15.1,15.3,15.4,15.6,15.5,15.3,15.2,15.0];
+  const standardSubs = [10.5,10.8,11.0,11.3,11.5,11.8,12.0,12.4,12.2,12.0,12.1,12.0];
+  const ultimateSubs = [6.8, 7.0, 7.2, 7.4, 7.5, 7.7, 7.9, 8.3, 8.1, 7.9, 8.0, 8.2];
+  mkChart('gpSubsByTier', { type:'line', data:{ labels:MONTHS, datasets:[
+    { label:'Core', data:coreSubs, backgroundColor:alpha(GREEN,0.4), borderColor:GREEN, fill:true, tension:0.3, pointRadius:2 },
+    { label:'Standard', data:standardSubs, backgroundColor:alpha(BLUE,0.4), borderColor:BLUE, fill:true, tension:0.3, pointRadius:2 },
+    { label:'Ultimate', data:ultimateSubs, backgroundColor:alpha(PURPLE,0.4), borderColor:PURPLE, fill:true, tension:0.3, pointRadius:2 },
+  ]}, options:{ responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
+    plugins:{ legend:{position:'bottom'},
+      annotation:{ annotations:{ holiday:{ type:'box', xMin:6.5, xMax:7.5, backgroundColor:alpha(GOLD,0.08),
+        borderColor:alpha(GOLD,0.3), label:{display:true,content:'Holiday Peak',position:'start',color:GOLD,font:{size:10}} }}}
+    },
+    scales:{ x:{grid:{display:false}}, y:{stacked:true, ticks:{callback:v=>v+'M'}} }
+  }});
+
+  // 2. Net Subscriber Adds
+  const newSubs =       [620,580,640,710,650,720,800,1100,750,600,650,680];
+  const returning =     [180,160,170,200,190,210,240,310,220,190,200,210];
+  const churned =       [-520,-490,-510,-540,-500,-530,-560,-620,-580,-540,-550,-560];
+  const netAdds = newSubs.map((v,i) => v + returning[i] + churned[i]);
+  mkChart('gpNetAdds', { type:'bar', data:{ labels:MONTHS, datasets:[
+    { label:'New', data:newSubs, backgroundColor:GREEN },
+    { label:'Returning', data:returning, backgroundColor:TEAL },
+    { label:'Churned', data:churned, backgroundColor:RED },
+    { label:'Net', data:netAdds, type:'line', borderColor:GOLD, backgroundColor:'transparent', pointRadius:4, pointBackgroundColor:GOLD, borderWidth:2, tension:0.3, order:0 },
+  ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}},
+    scales:{ x:{stacked:true,grid:{display:false}}, y:{stacked:true, ticks:{callback:v=>v>0?'+'+v+'K':v+'K'}} }
+  }});
+
+  // 3. Trial-to-Paid Conversion
+  mkChart('gpTrialConversion', { type:'line', data:{ labels:MONTHS, datasets:[
+    { label:'$1 Trial', data:[38,39,40,41,40,42,43,45,44,42,43,42], borderColor:GREEN, backgroundColor:alpha(GREEN,0.1), fill:true, tension:0.3, pointRadius:3 },
+    { label:'14-Day Free', data:[28,29,30,31,30,32,33,36,34,32,33,32], borderColor:BLUE, tension:0.3, pointRadius:3 },
+    { label:'Friends & Family', data:[52,53,54,55,54,56,57,59,58,56,57,56], borderColor:PURPLE, tension:0.3, pointRadius:3 },
+  ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}},
+    scales:{ x:{grid:{display:false}}, y:{min:20,max:65,ticks:{callback:v=>v+'%'}} }
+  }});
+
+  // 4. Churn Rate by Tier
+  mkChart('gpChurnByTier', { type:'line', data:{ labels:MONTHS, datasets:[
+    { label:'Core', data:[6.2,6.0,5.9,5.8,5.9,5.7,5.6,5.4,5.5,5.7,5.6,5.5], borderColor:GREEN, tension:0.3, pointRadius:3 },
+    { label:'Standard', data:[5.1,5.0,4.9,4.8,4.9,4.7,4.6,4.3,4.5,4.7,4.6,4.5], borderColor:BLUE, tension:0.3, pointRadius:3 },
+    { label:'Ultimate', data:[3.4,3.3,3.2,3.1,3.2,3.0,2.9,2.7,2.8,3.0,2.9,2.8], borderColor:PURPLE, tension:0.3, pointRadius:3 },
+  ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}},
+    scales:{ x:{grid:{display:false}}, y:{min:2,max:7,ticks:{callback:v=>v+'%'}} }
+  }});
+
+  // 5. Content Library Size
+  mkChart('gpLibrarySize', { type:'line', data:{ labels:MONTHS, datasets:[
+    { label:'Total Titles', data:[448,452,458,461,465,468,472,478,480,476,479,482],
+      borderColor:BLUE, backgroundColor:alpha(BLUE,0.1), fill:true, tension:0.3, pointRadius:3,
+      datalabels:{ display:function(ctx){ return ctx.dataIndex===0||ctx.dataIndex===11; }, color:'#E6EDF3',
+        anchor:'top', align:'top', font:{weight:'bold'} }},
+    { label:'Day-One Titles (cumulative)', data:[82,84,87,89,91,93,96,100,103,105,107,110],
+      borderColor:GOLD, tension:0.3, pointRadius:3, borderDash:[5,3] },
+  ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}},
+    scales:{ x:{grid:{display:false}}, y:{min:50} }
+  }});
+
+  // 6. Catalog Freshness
+  mkChart('gpCatalogFreshness', { type:'bar', data:{ labels:MONTHS, datasets:[
+    { label:'% Added <90 days', data:[14.2,14.8,15.1,15.6,15.3,16.0,16.5,17.8,17.2,16.1,16.5,16.8],
+      backgroundColor: MONTHS.map((_,i)=>{const v=[14.2,14.8,15.1,15.6,15.3,16.0,16.5,17.8,17.2,16.1,16.5,16.8][i]; return v>16?GREEN:v>15?BLUE:ORANGE;}),
+      borderRadius:4 },
+  ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},
+    datalabels:{display:true,color:'#E6EDF3',anchor:'end',align:'top',font:{weight:'bold',size:10},formatter:v=>v+'%'}},
+    scales:{ x:{grid:{display:false}}, y:{min:10,max:20,ticks:{callback:v=>v+'%'}} }
+  }});
+
+  // 7. Day-One Titles Impact (Scatter)
+  const dayOneData = [
+    {x:92,y:1.2,r:18,label:'Avowed'},{x:87,y:0.8,r:14,label:'Fable'},{x:78,y:0.5,r:10,label:'Towerborne'},
+    {x:84,y:0.9,r:16,label:'Indiana Jones 2'},{x:71,y:0.3,r:7,label:'Ara: Untold'},{x:88,y:1.1,r:17,label:'Doom: Dark Ages'},
+    {x:65,y:0.15,r:5,label:'Replaced'},{x:82,y:0.7,r:12,label:'Clockwork Rev'},{x:76,y:0.4,r:9,label:'Mixtape'},
+    {x:90,y:1.0,r:15,label:'S. Blade'},{x:69,y:0.2,r:6,label:'33 Immortals'},{x:95,y:1.4,r:20,label:'Elder Scrolls VI'},
+  ];
+  mkChart('gpDayOneImpact', { type:'bubble', data:{ datasets:[{
+    label:'Day-One Titles', data:dayOneData,
+    backgroundColor:dayOneData.map(d=>d.x>=85?alpha(GREEN,0.6):d.x>=75?alpha(BLUE,0.6):alpha(ORANGE,0.6)),
+    borderColor:dayOneData.map(d=>d.x>=85?GREEN:d.x>=75?BLUE:ORANGE), borderWidth:1,
+  }]}, options:{ responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false}, tooltip:{ callbacks:{
+      label:ctx=>`${dayOneData[ctx.dataIndex].label}: MC ${ctx.parsed.x}, +${ctx.parsed.y}M subs`
+    }}, datalabels:{ display:true, color:'#E6EDF3', font:{size:9,weight:'500'},
+      formatter:(_,ctx)=>dayOneData[ctx.dataIndex].label, anchor:'end', align:'top', offset:4 }},
+    scales:{ x:{title:{display:true,text:'Metacritic Score',color:'#8B949E'},min:60,max:100,grid:{color:'#21262D'}},
+      y:{title:{display:true,text:'Subscriber Spike (M)',color:'#8B949E'},min:0,max:1.6,ticks:{callback:v=>'+'+v+'M'},grid:{color:'#21262D'}} }
+  }});
+
+  // 8. Cost of Content vs Revenue (Dual Axis)
+  const subRev =      [410,420,435,448,440,460,475,520,495,470,480,490];
+  const contentCost = [195,200,210,215,220,225,235,260,245,230,240,245];
+  mkChart('gpCostVsRev', { type:'bar', data:{ labels:MONTHS, datasets:[
+    { label:'Sub Revenue', data:subRev, backgroundColor:alpha(GREEN,0.7), borderColor:GREEN, borderWidth:1, borderRadius:4, yAxisID:'y', order:1 },
+    { label:'Content Cost', data:contentCost, backgroundColor:alpha(RED,0.7), borderColor:RED, borderWidth:1, borderRadius:4, yAxisID:'y', order:2 },
+    { label:'Margin %', data:subRev.map((v,i)=>Math.round((v-contentCost[i])/v*100)),
+      type:'line', borderColor:GOLD, pointBackgroundColor:GOLD, pointRadius:4, borderWidth:2, tension:0.3, yAxisID:'y1', order:0 },
+  ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}},
+    scales:{ x:{grid:{display:false}},
+      y:{position:'left',ticks:{callback:v=>'$'+v+'M'},grid:{color:'#21262D'}},
+      y1:{position:'right',min:40,max:60,ticks:{callback:v=>v+'%'},grid:{display:false}} }
+  }});
+
+  // 9. Cannibalization Analysis
+  mkChart('gpCannibalization', { type:'bar', data:{ labels:['AAA\nFirst-Party','AAA\nThird-Party','AA\nTitles','Indie','Legacy\nTitles'],
+    datasets:[
+      { label:'Would Have Purchased', data:[22,34,18,8,5], backgroundColor:RED, borderRadius:4 },
+      { label:'Incremental Play', data:[78,66,82,92,95], backgroundColor:GREEN, borderRadius:4 },
+    ]}, options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y',
+    plugins:{ legend:{position:'bottom'}, datalabels:{display:true,color:'#E6EDF3',font:{weight:'bold',size:10},formatter:v=>v+'%'}},
+    scales:{ x:{stacked:true,max:100,ticks:{callback:v=>v+'%'},grid:{color:'#21262D'}},
+      y:{stacked:true,grid:{display:false}} }
+  }});
+
+  // 10. GP Revenue Waterfall
+  const wfData = [
+    {label:'Sub Revenue',value:490,color:GREEN},{label:'MTX Uplift',value:82,color:BLUE},
+    {label:'Content Cost',value:-245,color:RED},{label:'Platform Cost',value:-38,color:ORANGE},
+    {label:'GP Margin',value:289,color:GOLD}
+  ];
+  let running = 0;
+  const wfBase = [], wfVal = [], wfColors = [];
+  wfData.forEach((d,i)=>{
+    if(i===wfData.length-1){ wfBase.push(0); wfVal.push(d.value); }
+    else if(d.value>=0){ wfBase.push(running); wfVal.push(d.value); running+=d.value; }
+    else { running+=d.value; wfBase.push(running); wfVal.push(-d.value); }
+    wfColors.push(d.color);
+  });
+  mkChart('gpRevenueWaterfall', { type:'bar', data:{ labels:wfData.map(d=>d.label), datasets:[
+    { label:'Base', data:wfBase, backgroundColor:'transparent', borderWidth:0 },
+    { label:'Value', data:wfVal, backgroundColor:wfColors, borderRadius:4 },
+  ]}, options:{ responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false}, datalabels:{display:function(ctx){return ctx.datasetIndex===1;},
+      color:'#E6EDF3',anchor:'end',align:'top',font:{weight:'bold',size:11},
+      formatter:(v,ctx)=>{const d=wfData[ctx.dataIndex];return(d.value>0?'+':'')+d.value+'M';}}},
+    scales:{ x:{stacked:true,grid:{display:false}}, y:{stacked:true,ticks:{callback:v=>'$'+v+'M'},grid:{color:'#21262D'}} }
+  }});
+
+  // 11. Top Played Game Pass Titles (Horizontal Bar)
+  const topTitles = ['Call of Duty: MW III','Minecraft','Forza Horizon 5','Halo Infinite','Starfield',
+    'Sea of Thieves','Doom: Dark Ages','Avowed','Fable','Indiana Jones 2'];
+  const topHours = [48.2,42.1,28.4,22.6,19.8,16.3,14.7,12.9,11.4,10.2];
+  mkChart('gpTopPlayed', { type:'bar', data:{ labels:topTitles, datasets:[{
+    data:topHours, backgroundColor:[RED,GREEN3,BLUE,GREEN,PURPLE,TEAL,ORANGE,GREEN2,GOLD,'#C084FC'],
+    borderRadius:4 }]},
+    options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y',
+    plugins:{ legend:{display:false}, datalabels:{display:true,color:'#E6EDF3',anchor:'end',align:'right',
+      font:{weight:'bold',size:10},formatter:v=>v+'M hrs'}},
+    scales:{ x:{grid:{color:'#21262D'},ticks:{callback:v=>v+'M'}}, y:{grid:{display:false}} }
+  }});
+
+  // 12. Engagement Lift
+  mkChart('gpEngagementLift', { type:'bar', data:{ labels:MONTHS, datasets:[
+    { label:'GP Subscribers', data:[142,145,148,152,150,155,158,168,162,156,159,162], backgroundColor:GREEN, borderRadius:4 },
+    { label:'Non-Subscribers', data:[68,69,70,71,70,72,73,76,74,72,73,74], backgroundColor:alpha('#8B949E',0.5), borderRadius:4 },
+  ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'},
+    annotation:{annotations:{lift:{type:'label',xValue:5.5,yValue:165,content:['GP users play 2.1x','more than non-GP'],
+      color:GREEN3,font:{size:11,weight:'bold'},backgroundColor:alpha('#0D1117',0.8),padding:8,borderRadius:6}}}},
+    scales:{ x:{grid:{display:false}}, y:{ticks:{callback:v=>v+' min'}} }
+  }});
+
+  // 13. ARPU by Tier
+  mkChart('gpARPU', { type:'line', data:{ labels:MONTHS, datasets:[
+    { label:'Ultimate', data:[22.4,22.8,23.1,23.5,23.3,23.8,24.2,25.1,24.6,24.0,24.3,24.5],
+      borderColor:PURPLE, backgroundColor:alpha(PURPLE,0.1), fill:true, tension:0.3, pointRadius:3 },
+    { label:'Standard', data:[14.2,14.4,14.6,14.8,14.7,15.0,15.2,15.8,15.5,15.1,15.3,15.4],
+      borderColor:BLUE, tension:0.3, pointRadius:3 },
+    { label:'Core', data:[9.8,9.9,10.0,10.1,10.0,10.2,10.3,10.6,10.4,10.2,10.3,10.3],
+      borderColor:GREEN, tension:0.3, pointRadius:3 },
+    { label:'Blended', data:[14.8,15.0,15.3,15.6,15.4,15.8,16.1,16.9,16.5,16.0,16.3,16.4],
+      borderColor:GOLD, borderDash:[5,3], tension:0.3, pointRadius:3, borderWidth:2 },
+  ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}},
+    scales:{ x:{grid:{display:false}}, y:{ticks:{callback:v=>'$'+v}} }
+  }});
+}
+
+// ============ GAME TITLE CHARTS ============
+function gameMAU(id, data, color) {
+  mkChart(id, { type:'line', data:{ labels:MONTHS, datasets:[{ label:'GP MAU',data:data,
+    borderColor:color,backgroundColor:alpha(color,0.1),fill:true,tension:0.4,pointRadius:3 }]},
+    options:{ responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>v+'M'}}} }});
+}
+function gameDualBar(id, d1, d2, l1, l2, c1, c2, yFmt) {
+  mkChart(id, { type:'bar', data:{ labels:MONTHS, datasets:[
+    { label:l1,data:d1,backgroundColor:c1,borderRadius:4 },
+    { label:l2,data:d2,backgroundColor:c2,borderRadius:4 },
+  ]}, options:{ responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},
+    scales:{x:{grid:{display:false}},y:{ticks:{callback:yFmt||((v)=>v)}}} }});
+}
+
+function initHalo() {
+  gameMAU('haloMAU',[3.1,3.2,3.3,3.4,3.5,3.5,3.6,3.9,3.8,3.7,3.7,3.8],GREEN);
+  gameDualBar('haloMTX',[8.2,8.5,8.8,9.1,9.0,9.4,9.7,10.8,10.2,9.6,9.8,10.0],[4.1,4.2,4.3,4.4,4.3,4.5,4.6,5.1,4.8,4.5,4.6,4.7],
+    'GP Subs MTX','Retail MTX',GREEN,BLUE,v=>'$'+v+'M');
+}
+function initForza() {
+  gameMAU('forzaMAU',[4.2,4.4,4.5,4.6,4.7,4.8,4.9,5.3,5.2,5.0,5.0,5.1],BLUE);
+  gameDualBar('forzaDLC',[42,43,44,45,44,46,47,50,48,46,47,48],[28,29,29,30,29,31,31,34,32,30,31,32],
+    'GP DLC Attach %','Retail DLC Attach %',BLUE,ORANGE,v=>v+'%');
+}
+function initCoD() {
+  // Funnel
+  mkChart('codFunnel', { type:'bar', data:{ labels:['Trial Users','Converted\nto Sub','Active\nPlayers','MTX\nBuyers'],
+    datasets:[{ data:[4.2,1.8,8.4,3.6], backgroundColor:[ORANGE,GREEN,BLUE,PURPLE], borderRadius:4 }]},
+    options:{ responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+      datalabels:{display:true,color:'#E6EDF3',anchor:'end',align:'top',font:{weight:'bold'},formatter:v=>v+'M'}},
+    scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>v+'M'}}} }});
+  gameDualBar('codMTX',[11.2,11.4,11.6,11.8,11.7,12.0,12.3,13.1,12.6,12.0,12.2,12.4],[7.8,7.9,8.0,8.1,8.0,8.2,8.3,8.8,8.5,8.1,8.2,8.3],
+    'GP User Spend','Retail User Spend',GREEN,ORANGE,v=>'$'+v);
+}
+function initMinecraft() {
+  gameMAU('mcMAU',[11.0,11.2,11.4,11.6,11.8,11.9,12.0,12.5,12.4,12.1,12.2,12.3],GREEN3);
+  gameDualBar('mcMarketplace',[12.1,12.4,12.8,13.2,13.0,13.5,13.8,15.0,14.4,13.6,14.0,14.2],[8.2,8.4,8.6,8.8,8.7,9.0,9.2,10.0,9.6,9.1,9.3,9.5],
+    'GP Marketplace','Non-GP Marketplace',GREEN3,BLUE,v=>'$'+v+'M');
+}
+function initSoT() {
+  gameMAU('sotMAU',[1.4,1.5,1.6,1.7,1.8,1.8,1.9,2.2,2.1,2.0,2.0,2.1],TEAL);
+  gameDualBar('sotMTX',[3.8,4.0,4.2,4.4,4.3,4.6,4.8,5.4,5.1,4.7,4.9,5.0],[1.8,1.9,2.0,2.1,2.0,2.2,2.3,2.6,2.4,2.2,2.3,2.4],
+    'GP Emporium','Retail Emporium',TEAL,ORANGE,v=>'$'+v+'M');
+}
+function initStarfield() {
+  gameMAU('sfMAU',[3.8,3.9,4.0,4.1,4.2,4.2,4.3,4.7,4.6,4.4,4.5,4.6],PURPLE);
+  gameDualBar('sfDLC',[38,39,40,41,40,42,43,47,45,42,43,44],[18,19,19,20,19,21,21,24,22,20,21,22],
+    'GP DLC Attach %','Retail DLC Attach %',PURPLE,ORANGE,v=>v+'%');
+}
+
+// ============ INIT DEFAULT TAB ============
+window.addEventListener('DOMContentLoaded', () => { initTotal(); window._totalInit = true; });
+</script>
+</body>
+</html>

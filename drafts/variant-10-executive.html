@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Xbox Executive Dashboard — KPIs & Experiments</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<style>
+:root {
+  --bg: #0D1117; --card: #161B22; --border: #21262D; --text: #E6EDF3;
+  --text-dim: #8B949E; --text-muted: #484F58;
+  --green: #107C10; --green-mid: #10893E; --green-light: #7FBA00;
+  --blue: #0078D4; --purple: #7B68EE; --orange: #FF8C00;
+  --red: #E81123; --gold: #FFB900; --teal: #2EA043;
+  --sidebar-w: 220px; --header-h: 56px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* HEADER */
+.header {
+  position: fixed; top: 0; left: 0; right: 0; height: var(--header-h);
+  background: rgba(13,17,23,0.92); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border); display: flex; align-items: center;
+  padding: 0 24px; z-index: 100; gap: 16px;
+}
+.header-logo { display: flex; align-items: center; gap: 10px; }
+.header-logo svg { width: 28px; height: 28px; }
+.header-logo span { font-weight: 700; font-size: 16px; letter-spacing: -0.3px; }
+.header-badge { background: var(--green); color: #fff; font-size: 10px; font-weight: 700;
+  padding: 2px 8px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+.header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.header-date { color: var(--text-dim); font-size: 12px; }
+
+/* SIDEBAR */
+.sidebar {
+  position: fixed; top: var(--header-h); left: 0; width: var(--sidebar-w);
+  height: calc(100vh - var(--header-h)); background: var(--card);
+  border-right: 1px solid var(--border); overflow-y: auto; z-index: 90; padding: 12px 0;
+}
+.sidebar-section { padding: 8px 16px; font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-top: 8px; }
+.sidebar-item {
+  display: flex; align-items: center; gap: 10px; padding: 9px 16px;
+  cursor: pointer; font-size: 13px; color: var(--text-dim); transition: all 0.15s;
+  border-left: 3px solid transparent;
+}
+.sidebar-item:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+.sidebar-item.active { color: var(--green-light); background: rgba(127,186,0,0.06);
+  border-left-color: var(--green-light); font-weight: 600; }
+.sidebar-item .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+/* MAIN */
+.main { margin-left: var(--sidebar-w); margin-top: var(--header-h); padding: 24px; min-height: calc(100vh - var(--header-h)); }
+
+/* TAB CONTENT */
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* SECTION */
+.section { margin-bottom: 28px; }
+.section-title { font-size: 14px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1.2px; color: var(--text-dim); margin-bottom: 14px;
+  display: flex; align-items: center; gap: 8px; }
+.section-title::before { content: ''; width: 3px; height: 16px; border-radius: 2px; background: var(--green); }
+
+/* KPI HERO TILES */
+.kpi-hero-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+.kpi-hero {
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 20px; position: relative; overflow: hidden;
+}
+.kpi-hero .kpi-label { font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.8px; color: var(--text-dim); margin-bottom: 6px; }
+.kpi-hero .kpi-value { font-size: 32px; font-weight: 800; letter-spacing: -1px; line-height: 1.1; }
+.kpi-hero .kpi-sub { font-size: 12px; color: var(--text-dim); margin-top: 6px; display: flex; align-items: center; gap: 6px; }
+.kpi-hero .kpi-delta { font-size: 12px; font-weight: 600; padding: 2px 6px; border-radius: 4px; }
+.kpi-hero .kpi-delta.up { color: var(--green-light); background: rgba(127,186,0,0.12); }
+.kpi-hero .kpi-delta.down { color: var(--red); background: rgba(232,17,35,0.12); }
+.kpi-hero .sparkline-container { position: absolute; bottom: 0; right: 0; width: 120px; height: 50px; opacity: 0.5; }
+
+/* CARDS, GRIDS */
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+.card-title { font-size: 13px; font-weight: 600; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.chart-box { height: 300px; position: relative; }
+.chart-box-sm { height: 220px; position: relative; }
+
+/* TABLES */
+.data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.data-table th { text-align: left; padding: 10px 12px; font-weight: 600; font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted);
+  border-bottom: 1px solid var(--border); }
+.data-table td { padding: 10px 12px; border-bottom: 1px solid rgba(33,38,45,0.5); }
+.data-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+/* STATUS BADGES */
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+.badge-green { background: rgba(16,124,16,0.18); color: var(--green-light); }
+.badge-yellow { background: rgba(255,185,0,0.18); color: var(--gold); }
+.badge-red { background: rgba(232,17,35,0.18); color: var(--red); }
+.badge-blue { background: rgba(0,120,212,0.18); color: var(--blue); }
+.badge-purple { background: rgba(123,104,238,0.18); color: var(--purple); }
+.badge-orange { background: rgba(255,140,0,0.18); color: var(--orange); }
+
+/* PROGRESS BARS */
+.progress-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
+
+/* QBR CARDS */
+.qbr-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 18px; border-left: 3px solid var(--green); }
+.qbr-card h4 { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+.qbr-card p { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+
+/* WATERFALL COLORS */
+.waterfall-up { background: var(--green); }
+.waterfall-down { background: var(--red); }
+
+/* RESPONSIVE */
+@media (max-width: 1200px) { .kpi-hero-grid { grid-template-columns: repeat(2, 1fr); } .grid-3 { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 768px) {
+  .sidebar { display: none; } .main { margin-left: 0; }
+  .kpi-hero-grid { grid-template-columns: 1fr; } .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-logo">
+    <svg viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="13" stroke="#107C10" stroke-width="2"/>
+    <path d="M7 14C7 10 9 7 14 7s7 3 7 7-2 7-7 7-7-3-7-7z" fill="#107C10" opacity="0.3"/>
+    <path d="M10 14a4 4 0 118 0 4 4 0 01-8 0z" fill="#107C10"/></svg>
+    <span>Xbox Executive Dashboard</span>
+  </div>
+  <span class="header-badge">V10 — KPIs & Experiments</span>
+  <div class="header-right">
+    <span class="header-date" id="headerDate"></span>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-section">Portfolio</div>
+  <div class="sidebar-item active" data-tab="total"><span class="dot" style="background:#107C10"></span>Total Xbox</div>
+  <div class="sidebar-section">Subscriptions</div>
+  <div class="sidebar-item" data-tab="gamepass"><span class="dot" style="background:#7FBA00"></span>Game Pass</div>
+  <div class="sidebar-section">Franchises</div>
+  <div class="sidebar-item" data-tab="halo"><span class="dot" style="background:#0078D4"></span>Halo</div>
+  <div class="sidebar-item" data-tab="forza"><span class="dot" style="background:#FF8C00"></span>Forza</div>
+  <div class="sidebar-item" data-tab="cod"><span class="dot" style="background:#E81123"></span>Call of Duty</div>
+  <div class="sidebar-item" data-tab="minecraft"><span class="dot" style="background:#7B68EE"></span>Minecraft</div>
+  <div class="sidebar-item" data-tab="sot"><span class="dot" style="background:#FFB900"></span>Sea of Thieves</div>
+  <div class="sidebar-item" data-tab="starfield"><span class="dot" style="background:#2EA043"></span>Starfield</div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="main" id="mainContent"></div>
+
+<script>
+// ── DATA LAYER ──
+const MONTHS = ['May 25','Jun 25','Jul 25','Aug 25','Sep 25','Oct 25','Nov 25','Dec 25','Jan 26','Feb 26','Mar 26','Apr 26'];
+const MONTHS_SHORT = ['May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr'];
+
+function trend(start, end, noise=0.03) {
+  const r=[]; for(let i=0;i<12;i++){const p=i/11;const v=start+(end-start)*p;r.push(+(v*(1+(Math.random()-0.5)*2*noise)).toFixed(2));}return r;
+}
+function sparkArr(start,end,n=12){return trend(start,end,0.04);}
+
+const D = {
+  total: {
+    label: 'Total Xbox', color: '#107C10',
+    kpis: [
+      { label:'Total MAU', value:'120M', delta:'+8.2%', up:true, spark: sparkArr(111,120) },
+      { label:'Game Pass Subs', value:'35M', delta:'+14.3%', up:true, spark: sparkArr(30.6,35) },
+      { label:'Monthly Revenue', value:'$1.8B', delta:'+11.5%', up:true, spark: sparkArr(1.62,1.8) },
+      { label:'Minutes Played', value:'15B', delta:'+6.8%', up:true, spark: sparkArr(14.0,15.0) },
+      { label:'Gross Margin', value:'-12%', delta:'-2.1pp', up:false, spark: sparkArr(-9.8,-12) },
+      { label:'DAU/MAU', value:'42%', delta:'+1.8pp', up:true, spark: sparkArr(40.2,42) },
+      { label:'M1 Retention', value:'68%', delta:'+3.2pp', up:true, spark: sparkArr(64.8,68) },
+      { label:'NPS', value:'72', delta:'+4', up:true, spark: sparkArr(68,72) },
+    ],
+    mau: trend(111,120), dau: trend(46.6,50.4), revenue: trend(1.62,1.8),
+    minutes: trend(14.0,15.0), arpu: trend(14.6,15.0), retention: trend(64.8,68),
+    dauMau: trend(40.2,42), nps: trend(68,72),
+    scorecard: [
+      ['Total MAU','120M','125M','110M','+8.2%','🔶'],
+      ['DAU','50.4M','52M','44M','+14.5%','🟢'],
+      ['Game Pass Subs','35M','37M','30.6M','+14.3%','🔶'],
+      ['Monthly Revenue','$1.8B','$1.9B','$1.62B','+11.5%','🟢'],
+      ['Gross Margin','-12%','-8%','-9.8%','-2.2pp','🔴'],
+      ['DAU/MAU','42%','44%','40.2%','+1.8pp','🔶'],
+      ['M1 Retention','68%','70%','64.8%','+3.2pp','🟢'],
+      ['Minutes Played','15B','16B','14.0B','+6.8%','🔶'],
+      ['ARPU','$15.00','$15.50','$14.60','+2.7%','🔶'],
+      ['NPS','72','75','68','+4','🟢'],
+      ['LTV','$210','$225','$195','+7.7%','🟢'],
+      ['Churn Rate','4.2%','3.8%','4.8%','-0.6pp','🟢'],
+      ['MTX Revenue','$680M','$720M','$610M','+11.5%','🔶'],
+      ['First-Party Attach','3.2','3.5','2.9','+10.3%','🟢'],
+      ['Cloud Gaming MAU','18M','20M','14M','+28.6%','🟢'],
+      ['Accessibility Score','87%','90%','82%','+5pp','🟢'],
+    ],
+    experiments: [
+      ['GP Price Test — $17.99 Core','Running','Conversion Rate','+4.2%','$38M','🔵 Active',62],
+      ['Dynamic Difficulty AI','Running','Session Length','+12%','$24M','🔵 Active',45],
+      ['Social Play Prompts','Shipped','DAU/MAU','+2.1pp','$52M','🟢 Shipped',100],
+      ['Cloud Streaming 4K','Running','Cloud MAU','+18%','$31M','🔵 Active',78],
+      ['Family Plan — 5 users','Planning','Subs Growth','+8%','$65M','🟡 Planning',15],
+      ['Cross-Play Rewards','Running','Cross-Play %','+6.3%','$18M','🔵 Active',55],
+      ['AI Game Recommendations','Shipped','Engagement','+9.1%','$42M','🟢 Shipped',100],
+      ['Play-to-Earn Pilot','Cancelled','Retention','-1.2%','-$5M','🔴 Cancelled',0],
+    ],
+    revBridge: {
+      labels:['Jun Rev','Game Pass','MTX','Hardware','Cloud','Advertising','Licensing','Churn Impact','Cost Increases','Apr Rev'],
+      values:[1620, 95, 72, 28, 45, 22, 18, -42, -58, 1800],
+      colors:['#0078D4','#107C10','#7FBA00','#10893E','#7B68EE','#FFB900','#FF8C00','#E81123','#E81123','#0078D4'],
+    },
+    competitive: [
+      ['Monthly Active Users','120M','110M','95M'],
+      ['Subscription Revenue','$630M','$580M','$180M'],
+      ['Market Share (Console)','32%','42%','26%'],
+      ['Cloud Gaming Users','18M','8M','2M'],
+      ['Avg Session (min)','52','48','38'],
+      ['NPS','72','68','78'],
+      ['First-Party Titles/Yr','12','8','15'],
+      ['Digital Revenue %','72%','65%','45%'],
+    ],
+    risks: [
+      ['Gross Margin Erosion','High','Margin at -12%, below target. Cloud + GP costs growing faster than rev.','Mitigation plan in place','🔴'],
+      ['GP Subscriber Churn','Medium','Post-price-increase churn risk in Q3.','A/B testing retention offers','🟡'],
+      ['Competitive AAA Gap','Medium','PlayStation exclusives pipeline is strong H2 2025.','Activision pipeline accelerated','🟡'],
+      ['Cloud Latency Complaints','Low','Edge node expansion on track; 95p latency improving.','Azure partnership scaling','🟢'],
+      ['Regulatory (EU DMA)','Medium','Potential app store changes required by Q1 2026.','Legal team engaged','🟡'],
+      ['Supply Chain (Chips)','Low','Next-gen chip supply secured through 2026.','Dual-source strategy active','🟢'],
+    ],
+    initiatives: [
+      ['Project Keystone — Cloud Stick','On Track',72,'#107C10','Q4 2025 launch'],
+      ['Game Pass Family Plan','At Risk',35,'#FFB900','Pricing model under review'],
+      ['Xbox Mobile Store','On Track',58,'#107C10','Soft launch Q3 2025'],
+      ['AI NPCs — First Party','On Track',45,'#107C10','Halo integration first'],
+      ['Next-Gen Console (2027)','On Track',22,'#0078D4','Architecture finalized'],
+      ['Activision Full Integration','On Track',85,'#107C10','Studio realignment complete'],
+      ['xCloud Latency <40ms','Delayed',60,'#E81123','Edge rollout behind 3 weeks'],
+      ['Creator Economy Platform','On Track',30,'#107C10','Beta in Nov 2025'],
+    ],
+    qbr: [
+      {title:'Revenue Acceleration',text:'Revenue grew 11.5% YoY driven by Game Pass expansion (+14.3%) and MTX strength. On track for $21.6B annual run rate. Cloud gaming emerging as key growth vector with 28.6% MAU growth.',border:'#107C10'},
+      {title:'Margin Pressure Persists',text:'Gross margin declined to -12%, missing -8% target. Primary drivers: GP content costs (+$180M), cloud infrastructure (+$95M). Offsetting with higher ARPU and ad revenue. Path to breakeven pushed to FY27.',border:'#E81123'},
+      {title:'Engagement Inflection',text:'DAU/MAU reached 42%, highest in 3 years. AI recommendations driving +9.1% engagement lift. Social features and cross-play rewards showing strong early results. Minutes played up 6.8% despite seasonal headwinds.',border:'#0078D4'},
+      {title:'Strategic Bets Paying Off',text:'Activision integration 85% complete — CoD revenue contribution exceeding plan by 12%. Cloud gaming hitting 18M MAU milestone. Mobile store soft launch on track. Family Plan decision point in August.',border:'#7B68EE'},
+    ],
+    goalsTargets: [
+      {area:'Game Pass',actual:35,target:37,unit:'M subs',pct:94.6},
+      {area:'Cloud Gaming',actual:18,target:20,unit:'M MAU',pct:90.0},
+      {area:'MTX Revenue',actual:680,target:720,unit:'$M/mo',pct:94.4},
+      {area:'First-Party Attach',actual:3.2,target:3.5,unit:'titles',pct:91.4},
+      {area:'NPS',actual:72,target:75,unit:'score',pct:96.0},
+      {area:'Gross Margin',actual:-12,target:-8,unit:'%',pct:66.7},
+      {area:'DAU/MAU',actual:42,target:44,unit:'%',pct:95.5},
+      {area:'M1 Retention',actual:68,target:70,unit:'%',pct:97.1},
+    ],
+    expTimeline: {
+      shipped: [
+        {month:2, name:'Social Play Prompts', impact:52},
+        {month:5, name:'AI Recommendations', impact:42},
+      ],
+      running: [
+        {month:3, name:'GP Price Test', impact:38},
+        {month:4, name:'Dynamic Difficulty', impact:24},
+        {month:6, name:'Cloud 4K', impact:31},
+        {month:7, name:'Cross-Play Rewards', impact:18},
+      ],
+    },
+    growth: { newUsers: trend(4.2,4.8), organic: trend(2.8,3.2), paid: trend(1.4,1.6), viral: trend(0.8,1.1) },
+    engagement: { sessions: trend(3.2,3.5), duration: trend(48,52), d7: trend(58,62), d30: trend(42,46) },
+    monetization: { arpu: trend(14.6,15.0), arppu: trend(38,42), convRate: trend(5.2,5.8), ltv: trend(195,210) },
+    retentionCohort: { m1: trend(64.8,68), m3: trend(48,52), m6: trend(35,38), m12: trend(24,27) },
+  },
+  gamepass: {
+    label:'Game Pass', color:'#7FBA00',
+    kpis:[
+      {label:'Total Subs',value:'35M',delta:'+14.3%',up:true,spark:sparkArr(30.6,35)},
+      {label:'Core Tier',value:'18M',delta:'+10%',up:true,spark:sparkArr(16.4,18)},
+      {label:'Ultimate Tier',value:'12M',delta:'+20%',up:true,spark:sparkArr(10,12)},
+      {label:'PC Tier',value:'5M',delta:'+15%',up:true,spark:sparkArr(4.3,5)},
+      {label:'ARPU',value:'$15.20',delta:'+3.4%',up:true,spark:sparkArr(14.7,15.2)},
+      {label:'Churn Rate',value:'4.2%',delta:'-0.6pp',up:true,spark:sparkArr(4.8,4.2)},
+      {label:'Titles Available',value:'485',delta:'+45',up:true,spark:sparkArr(440,485)},
+      {label:'Day-1 Launches',value:'38',delta:'+12',up:true,spark:sparkArr(26,38)},
+    ],
+    mau:trend(28,32), dau:trend(14,16.5), revenue:trend(450,532),
+    minutes:trend(4.2,5.1), retention:trend(72,76), churn:trend(4.8,4.2),
+    scorecard:[
+      ['Total Subscribers','35M','37M','30.6M','+14.3%','🔶'],
+      ['Ultimate %','34.3%','38%','32.7%','+1.6pp','🔶'],
+      ['Monthly Revenue','$532M','$570M','$450M','+18.2%','🟢'],
+      ['Churn Rate','4.2%','3.8%','4.8%','-0.6pp','🟢'],
+      ['Content Cost/Sub','$8.20','$7.50','$7.80','+5.1%','🔴'],
+      ['Trial Conversion','32%','35%','28%','+4pp','🟢'],
+      ['Avg Titles Played','4.8','5.2','4.1','+17%','🟢'],
+      ['Cloud Play %','22%','25%','16%','+6pp','🟢'],
+    ],
+    goalsTargets:[
+      {area:'Total Subs',actual:35,target:37,unit:'M',pct:94.6},
+      {area:'Ultimate Mix',actual:34.3,target:38,unit:'%',pct:90.3},
+      {area:'Churn',actual:4.2,target:3.8,unit:'%',pct:90.5},
+      {area:'ARPU',actual:15.2,target:16.0,unit:'$',pct:95.0},
+      {area:'Cloud Play',actual:22,target:25,unit:'%',pct:88.0},
+    ],
+    growth:{newUsers:trend(1.8,2.2),organic:trend(1.1,1.4),paid:trend(0.5,0.6),viral:trend(0.2,0.3)},
+    engagement:{sessions:trend(4.1,4.6),duration:trend(55,62),d7:trend(65,70),d30:trend(52,58)},
+    monetization:{arpu:trend(14.7,15.2),arppu:trend(15.2,15.8),convRate:trend(28,32),ltv:trend(280,320)},
+    retentionCohort:{m1:trend(72,76),m3:trend(58,63),m6:trend(45,50),m12:trend(32,37)},
+  },
+  halo: {
+    label:'Halo', color:'#0078D4',
+    kpis:[
+      {label:'MAU',value:'8.2M',delta:'+22%',up:true,spark:sparkArr(6.7,8.2)},
+      {label:'DAU',value:'2.8M',delta:'+18%',up:true,spark:sparkArr(2.4,2.8)},
+      {label:'Revenue',value:'$42M/mo',delta:'+15%',up:true,spark:sparkArr(36.5,42)},
+      {label:'Avg Session',value:'48 min',delta:'+8%',up:true,spark:sparkArr(44,48)},
+      {label:'MTX ARPU',value:'$5.12',delta:'+11%',up:true,spark:sparkArr(4.6,5.12)},
+      {label:'M1 Retention',value:'62%',delta:'+5pp',up:true,spark:sparkArr(57,62)},
+      {label:'Ranked Pop.',value:'1.2M',delta:'+28%',up:true,spark:sparkArr(0.94,1.2)},
+      {label:'NPS',value:'68',delta:'+8',up:true,spark:sparkArr(60,68)},
+    ],
+    mau:trend(6.7,8.2), dau:trend(2.4,2.8), revenue:trend(36.5,42),
+    minutes:trend(1.8,2.2), retention:trend(57,62),
+    scorecard:[
+      ['MAU','8.2M','9M','6.7M','+22%','🟢'],['DAU','2.8M','3M','2.4M','+18%','🟢'],
+      ['Revenue','$42M','$45M','$36.5M','+15%','🔶'],['MTX ARPU','$5.12','$5.50','$4.60','+11%','🟢'],
+      ['M1 Retention','62%','65%','57%','+5pp','🟢'],['NPS','68','72','60','+8','🟢'],
+    ],
+    goalsTargets:[
+      {area:'MAU',actual:8.2,target:9,unit:'M',pct:91.1},
+      {area:'MTX Rev',actual:42,target:45,unit:'$M/mo',pct:93.3},
+      {area:'Ranked Pop',actual:1.2,target:1.5,unit:'M',pct:80.0},
+      {area:'NPS',actual:68,target:72,unit:'pts',pct:94.4},
+    ],
+    growth:{newUsers:trend(0.6,0.9),organic:trend(0.4,0.6),paid:trend(0.15,0.2),viral:trend(0.08,0.12)},
+    engagement:{sessions:trend(3.0,3.4),duration:trend(44,48),d7:trend(52,58),d30:trend(38,44)},
+    monetization:{arpu:trend(4.6,5.12),arppu:trend(22,26),convRate:trend(8,10),ltv:trend(85,105)},
+    retentionCohort:{m1:trend(57,62),m3:trend(42,47),m6:trend(30,34),m12:trend(20,24)},
+  },
+  forza: {
+    label:'Forza', color:'#FF8C00',
+    kpis:[
+      {label:'MAU',value:'12.5M',delta:'+10%',up:true,spark:sparkArr(11.4,12.5)},
+      {label:'DAU',value:'4.1M',delta:'+12%',up:true,spark:sparkArr(3.7,4.1)},
+      {label:'Revenue',value:'$58M/mo',delta:'+9%',up:true,spark:sparkArr(53,58)},
+      {label:'Avg Session',value:'42 min',delta:'+5%',up:true,spark:sparkArr(40,42)},
+      {label:'DLC Attach',value:'62%',delta:'+4pp',up:true,spark:sparkArr(58,62)},
+      {label:'M1 Retention',value:'71%',delta:'+3pp',up:true,spark:sparkArr(68,71)},
+      {label:'Races/Day',value:'18M',delta:'+15%',up:true,spark:sparkArr(15.6,18)},
+      {label:'NPS',value:'76',delta:'+3',up:true,spark:sparkArr(73,76)},
+    ],
+    mau:trend(11.4,12.5), dau:trend(3.7,4.1), revenue:trend(53,58),
+    minutes:trend(2.1,2.5), retention:trend(68,71),
+    scorecard:[
+      ['MAU','12.5M','13M','11.4M','+10%','🟢'],['Revenue','$58M','$62M','$53M','+9%','🔶'],
+      ['DLC Attach','62%','65%','58%','+4pp','🟢'],['M1 Retention','71%','73%','68%','+3pp','🟢'],
+      ['NPS','76','78','73','+3','🟢'],['Races/Day','18M','20M','15.6M','+15%','🟢'],
+    ],
+    goalsTargets:[
+      {area:'MAU',actual:12.5,target:13,unit:'M',pct:96.2},
+      {area:'Revenue',actual:58,target:62,unit:'$M/mo',pct:93.5},
+      {area:'DLC Attach',actual:62,target:65,unit:'%',pct:95.4},
+      {area:'NPS',actual:76,target:78,unit:'pts',pct:97.4},
+    ],
+    growth:{newUsers:trend(0.8,1.0),organic:trend(0.5,0.65),paid:trend(0.2,0.25),viral:trend(0.1,0.15)},
+    engagement:{sessions:trend(2.8,3.1),duration:trend(40,42),d7:trend(60,65),d30:trend(48,52)},
+    monetization:{arpu:trend(4.2,4.6),arppu:trend(28,32),convRate:trend(12,14),ltv:trend(110,130)},
+    retentionCohort:{m1:trend(68,71),m3:trend(52,56),m6:trend(38,42),m12:trend(26,30)},
+  },
+  cod: {
+    label:'Call of Duty', color:'#E81123',
+    kpis:[
+      {label:'MAU',value:'45M',delta:'+18%',up:true,spark:sparkArr(38,45)},
+      {label:'DAU',value:'18M',delta:'+15%',up:true,spark:sparkArr(15.6,18)},
+      {label:'Revenue',value:'$320M/mo',delta:'+22%',up:true,spark:sparkArr(262,320)},
+      {label:'Avg Session',value:'58 min',delta:'+6%',up:true,spark:sparkArr(55,58)},
+      {label:'MTX ARPU',value:'$7.10',delta:'+14%',up:true,spark:sparkArr(6.2,7.1)},
+      {label:'M1 Retention',value:'65%',delta:'+4pp',up:true,spark:sparkArr(61,65)},
+      {label:'Warzone MAU',value:'28M',delta:'+20%',up:true,spark:sparkArr(23,28)},
+      {label:'NPS',value:'64',delta:'+6',up:true,spark:sparkArr(58,64)},
+    ],
+    mau:trend(38,45), dau:trend(15.6,18), revenue:trend(262,320),
+    minutes:trend(5.8,7.2), retention:trend(61,65),
+    scorecard:[
+      ['MAU','45M','48M','38M','+18%','🟢'],['Revenue','$320M','$340M','$262M','+22%','🟢'],
+      ['MTX ARPU','$7.10','$7.50','$6.20','+14%','🟢'],['M1 Retention','65%','68%','61%','+4pp','🟢'],
+      ['Warzone MAU','28M','30M','23M','+20%','🟢'],['NPS','64','70','58','+6','🔶'],
+    ],
+    goalsTargets:[
+      {area:'MAU',actual:45,target:48,unit:'M',pct:93.8},
+      {area:'Revenue',actual:320,target:340,unit:'$M/mo',pct:94.1},
+      {area:'Warzone MAU',actual:28,target:30,unit:'M',pct:93.3},
+      {area:'NPS',actual:64,target:70,unit:'pts',pct:91.4},
+    ],
+    growth:{newUsers:trend(2.5,3.2),organic:trend(1.5,1.9),paid:trend(0.7,0.9),viral:trend(0.4,0.5)},
+    engagement:{sessions:trend(3.8,4.2),duration:trend(55,58),d7:trend(55,60),d30:trend(40,45)},
+    monetization:{arpu:trend(6.2,7.1),arppu:trend(35,42),convRate:trend(14,16),ltv:trend(120,150)},
+    retentionCohort:{m1:trend(61,65),m3:trend(44,49),m6:trend(32,36),m12:trend(22,26)},
+  },
+  minecraft: {
+    label:'Minecraft', color:'#7B68EE',
+    kpis:[
+      {label:'MAU',value:'38M',delta:'+5%',up:true,spark:sparkArr(36.2,38)},
+      {label:'DAU',value:'12M',delta:'+7%',up:true,spark:sparkArr(11.2,12)},
+      {label:'Revenue',value:'$125M/mo',delta:'+8%',up:true,spark:sparkArr(116,125)},
+      {label:'Avg Session',value:'62 min',delta:'+4%',up:true,spark:sparkArr(60,62)},
+      {label:'Marketplace Rev',value:'$45M/mo',delta:'+12%',up:true,spark:sparkArr(40,45)},
+      {label:'M1 Retention',value:'78%',delta:'+2pp',up:true,spark:sparkArr(76,78)},
+      {label:'Realms Subs',value:'4.8M',delta:'+18%',up:true,spark:sparkArr(4.1,4.8)},
+      {label:'NPS',value:'82',delta:'+2',up:true,spark:sparkArr(80,82)},
+    ],
+    mau:trend(36.2,38), dau:trend(11.2,12), revenue:trend(116,125),
+    minutes:trend(3.8,4.2), retention:trend(76,78),
+    scorecard:[
+      ['MAU','38M','40M','36.2M','+5%','🟢'],['Revenue','$125M','$130M','$116M','+8%','🟢'],
+      ['Marketplace Rev','$45M','$48M','$40M','+12%','🟢'],['M1 Retention','78%','80%','76%','+2pp','🟢'],
+      ['Realms Subs','4.8M','5.2M','4.1M','+18%','🟢'],['NPS','82','84','80','+2','🟢'],
+    ],
+    goalsTargets:[
+      {area:'MAU',actual:38,target:40,unit:'M',pct:95.0},
+      {area:'Revenue',actual:125,target:130,unit:'$M/mo',pct:96.2},
+      {area:'Realms Subs',actual:4.8,target:5.2,unit:'M',pct:92.3},
+      {area:'NPS',actual:82,target:84,unit:'pts',pct:97.6},
+    ],
+    growth:{newUsers:trend(1.2,1.4),organic:trend(0.9,1.05),paid:trend(0.15,0.18),viral:trend(0.2,0.25)},
+    engagement:{sessions:trend(4.5,4.9),duration:trend(60,62),d7:trend(68,72),d30:trend(55,60)},
+    monetization:{arpu:trend(3.1,3.3),arppu:trend(18,20),convRate:trend(15,17),ltv:trend(145,165)},
+    retentionCohort:{m1:trend(76,78),m3:trend(62,66),m6:trend(48,52),m12:trend(38,42)},
+  },
+  sot: {
+    label:'Sea of Thieves', color:'#FFB900',
+    kpis:[
+      {label:'MAU',value:'5.8M',delta:'+32%',up:true,spark:sparkArr(4.4,5.8)},
+      {label:'DAU',value:'1.6M',delta:'+28%',up:true,spark:sparkArr(1.25,1.6)},
+      {label:'Revenue',value:'$22M/mo',delta:'+25%',up:true,spark:sparkArr(17.6,22)},
+      {label:'Avg Session',value:'72 min',delta:'+10%',up:true,spark:sparkArr(65,72)},
+      {label:'PS5 MAU',value:'1.8M',delta:'New',up:true,spark:sparkArr(0,1.8)},
+      {label:'M1 Retention',value:'58%',delta:'+6pp',up:true,spark:sparkArr(52,58)},
+      {label:'Emporium Rev',value:'$8.5M/mo',delta:'+35%',up:true,spark:sparkArr(6.3,8.5)},
+      {label:'NPS',value:'74',delta:'+5',up:true,spark:sparkArr(69,74)},
+    ],
+    mau:trend(4.4,5.8), dau:trend(1.25,1.6), revenue:trend(17.6,22),
+    minutes:trend(0.9,1.2), retention:trend(52,58),
+    scorecard:[
+      ['MAU','5.8M','6M','4.4M','+32%','🟢'],['Revenue','$22M','$24M','$17.6M','+25%','🟢'],
+      ['PS5 MAU','1.8M','2M','0','New','🟢'],['M1 Retention','58%','60%','52%','+6pp','🟢'],
+      ['NPS','74','76','69','+5','🟢'],['Emporium Rev','$8.5M','$9M','$6.3M','+35%','🟢'],
+    ],
+    goalsTargets:[
+      {area:'MAU',actual:5.8,target:6,unit:'M',pct:96.7},
+      {area:'Revenue',actual:22,target:24,unit:'$M/mo',pct:91.7},
+      {area:'PS5 MAU',actual:1.8,target:2,unit:'M',pct:90.0},
+      {area:'NPS',actual:74,target:76,unit:'pts',pct:97.4},
+    ],
+    growth:{newUsers:trend(0.5,0.8),organic:trend(0.3,0.45),paid:trend(0.1,0.2),viral:trend(0.1,0.18)},
+    engagement:{sessions:trend(2.5,3.0),duration:trend(65,72),d7:trend(48,55),d30:trend(35,42)},
+    monetization:{arpu:trend(3.0,3.8),arppu:trend(15,19),convRate:trend(10,13),ltv:trend(65,90)},
+    retentionCohort:{m1:trend(52,58),m3:trend(38,44),m6:trend(25,30),m12:trend(16,20)},
+  },
+  starfield: {
+    label:'Starfield', color:'#2EA043',
+    kpis:[
+      {label:'MAU',value:'6.5M',delta:'+45%',up:true,spark:sparkArr(4.5,6.5)},
+      {label:'DAU',value:'2.1M',delta:'+38%',up:true,spark:sparkArr(1.5,2.1)},
+      {label:'Revenue',value:'$35M/mo',delta:'+40%',up:true,spark:sparkArr(25,35)},
+      {label:'Avg Session',value:'85 min',delta:'+12%',up:true,spark:sparkArr(76,85)},
+      {label:'DLC Attach',value:'48%',delta:'+22pp',up:true,spark:sparkArr(26,48)},
+      {label:'M1 Retention',value:'55%',delta:'+8pp',up:true,spark:sparkArr(47,55)},
+      {label:'Mod Downloads',value:'12M',delta:'+65%',up:true,spark:sparkArr(7.3,12)},
+      {label:'NPS',value:'62',delta:'+12',up:true,spark:sparkArr(50,62)},
+    ],
+    mau:trend(4.5,6.5), dau:trend(1.5,2.1), revenue:trend(25,35),
+    minutes:trend(1.2,1.8), retention:trend(47,55),
+    scorecard:[
+      ['MAU','6.5M','7M','4.5M','+45%','🟢'],['Revenue','$35M','$38M','$25M','+40%','🟢'],
+      ['DLC Attach','48%','55%','26%','+22pp','🟢'],['M1 Retention','55%','60%','47%','+8pp','🔶'],
+      ['NPS','62','70','50','+12','🔶'],['Mod Downloads','12M','15M','7.3M','+65%','🟢'],
+    ],
+    goalsTargets:[
+      {area:'MAU',actual:6.5,target:7,unit:'M',pct:92.9},
+      {area:'Revenue',actual:35,target:38,unit:'$M/mo',pct:92.1},
+      {area:'DLC Attach',actual:48,target:55,unit:'%',pct:87.3},
+      {area:'NPS',actual:62,target:70,unit:'pts',pct:88.6},
+    ],
+    growth:{newUsers:trend(0.5,0.75),organic:trend(0.3,0.45),paid:trend(0.12,0.18),viral:trend(0.08,0.14)},
+    engagement:{sessions:trend(2.2,2.8),duration:trend(76,85),d7:trend(45,52),d30:trend(32,40)},
+    monetization:{arpu:trend(5.6,5.4),arppu:trend(25,30),convRate:trend(18,22),ltv:trend(95,125)},
+    retentionCohort:{m1:trend(47,55),m3:trend(32,38),m6:trend(22,27),m12:trend(14,18)},
+  },
+};
+
+// ── RENDERING ──
+const charts = {};
+
+function destroyCharts() {
+  Object.keys(charts).forEach(k => { if(charts[k]){charts[k].destroy();delete charts[k];} });
+}
+
+function fmt(v,pre='',suf='') { return pre+v+suf; }
+
+function buildKPIHeroTiles(data) {
+  return `<div class="kpi-hero-grid">${data.kpis.map((k,i) => `
+    <div class="kpi-hero">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value">${k.value}</div>
+      <div class="kpi-sub">
+        <span class="kpi-delta ${k.up?'up':'down'}">${k.delta}</span>
+        <span>vs prior year</span>
+      </div>
+      <div class="sparkline-container"><canvas id="spark-${i}"></canvas></div>
+    </div>`).join('')}</div>`;
+}
+
+function renderSparklines(data, color) {
+  data.kpis.forEach((k,i) => {
+    const c = document.getElementById(`spark-${i}`);
+    if(!c) return;
+    charts[`spark-${i}`] = new Chart(c, {
+      type:'line',
+      data:{labels:MONTHS_SHORT,datasets:[{data:k.spark,borderColor:color,borderWidth:1.5,fill:true,
+        backgroundColor:color+'20',pointRadius:0,tension:0.4}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:false}},
+        scales:{x:{display:false},y:{display:false}},animation:false}
+    });
+  });
+}
+
+function buildScorecardTable(data) {
+  const rows = data.scorecard.map(r => `<tr>
+    <td style="font-weight:600">${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td>
+    <td style="color:${r[4].startsWith('+') || r[4]==='New'?'var(--green-light)':'var(--red)'}">${r[4]}</td>
+    <td>${r[5]}</td></tr>`).join('');
+  return `<div class="card"><div class="card-title">📊 KPI Scorecard — Actual vs Target vs YoY</div>
+    <div style="overflow-x:auto"><table class="data-table">
+    <thead><tr><th>Metric</th><th>Actual</th><th>Target</th><th>Prior Year</th><th>YoY Δ</th><th>Status</th></tr></thead>
+    <tbody>${rows}</tbody></table></div></div>`;
+}
+
+function buildGoalsTargets(data, tabId) {
+  return `<div class="card"><div class="card-title">🎯 Goals & Targets by Product Area</div>
+    <div class="chart-box"><canvas id="goals-${tabId}"></canvas></div></div>`;
+}
+
+function renderGoalsChart(data, tabId) {
+  const c = document.getElementById(`goals-${tabId}`);
+  if(!c) return;
+  const gt = data.goalsTargets;
+  charts[`goals-${tabId}`] = new Chart(c, {
+    type:'bar',
+    data:{
+      labels: gt.map(g=>g.area),
+      datasets:[
+        {label:'Actual',data:gt.map(g=>g.pct),backgroundColor:'#107C10',borderRadius:4,barPercentage:0.5},
+        {label:'Target (100%)',data:gt.map(()=>100),backgroundColor:'rgba(255,255,255,0.08)',borderRadius:4,barPercentage:0.5},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,indexAxis:'y',
+      plugins:{
+        legend:{display:true,position:'top',labels:{color:'#8B949E',font:{size:11},boxWidth:12}},
+        datalabels:{display:true,color:'#E6EDF3',font:{size:11,weight:600},anchor:'end',align:'start',
+          formatter:(v,ctx)=>ctx.datasetIndex===0?v.toFixed(1)+'%':''},
+        annotation:{annotations:{
+          goalLine:{type:'line',xMin:100,xMax:100,borderColor:'#FFB900',borderWidth:2,borderDash:[6,3],
+            label:{display:true,content:'Target',position:'end',color:'#FFB900',font:{size:10}}}
+        }}
+      },
+      scales:{
+        x:{max:110,grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#8B949E',callback:v=>v+'%'}},
+        y:{grid:{display:false},ticks:{color:'#E6EDF3',font:{size:12}}}
+      }
+    }
+  });
+}
+
+function buildExperimentsTable(data) {
+  if(!data.experiments) return '';
+  const rows = data.experiments.map(e => {
+    const statusClass = e[5].includes('Active')?'badge-blue':e[5].includes('Shipped')?'badge-green':
+      e[5].includes('Planning')?'badge-yellow':'badge-red';
+    return `<tr>
+      <td style="font-weight:600">${e[0]}</td>
+      <td><span class="badge ${statusClass}">${e[5]}</span></td>
+      <td>${e[2]}</td>
+      <td style="color:${e[3].startsWith('+')?'var(--green-light)':'var(--red)'};font-weight:600">${e[3]}</td>
+      <td style="font-weight:600">${e[4]}</td>
+      <td><div class="progress-bar" style="width:80px"><div class="progress-fill" style="width:${e[6]}%;background:${e[6]===100?'var(--green)':e[6]>0?'var(--blue)':'var(--text-muted)'}"></div></div></td>
+    </tr>`;
+  }).join('');
+  return `<div class="card"><div class="card-title">🧪 Active Experiments & A/B Tests</div>
+    <div style="overflow-x:auto"><table class="data-table">
+    <thead><tr><th>Experiment</th><th>Status</th><th>Primary Metric</th><th>Observed Lift</th><th>Est. NPV</th><th>Progress</th></tr></thead>
+    <tbody>${rows}</tbody></table></div></div>`;
+}
+
+function buildExperimentTimeline(tabId) {
+  if(tabId !== 'total') return '';
+  return `<div class="card"><div class="card-title">📈 Experiment Impact Timeline</div>
+    <div class="chart-box"><canvas id="exp-timeline"></canvas></div></div>`;
+}
+
+function renderExperimentTimeline() {
+  const c = document.getElementById('exp-timeline');
+  if(!c) return;
+  const cumImpact = [0, 0, 52, 52, 90, 114, 145, 163, 163, 163, 163, 163];
+  charts['exp-timeline'] = new Chart(c, {
+    type:'line',
+    data:{
+      labels:MONTHS,
+      datasets:[
+        {label:'Cumulative NPV Impact ($M)',data:cumImpact,borderColor:'#107C10',backgroundColor:'rgba(16,124,16,0.15)',
+          fill:true,tension:0.3,pointRadius:4,pointBackgroundColor:'#107C10',borderWidth:2},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:true,position:'top',labels:{color:'#8B949E',font:{size:11},boxWidth:12}},
+        datalabels:{display:true,color:'#E6EDF3',font:{size:10,weight:600},anchor:'end',align:'top',
+          formatter:v=>v>0?'$'+v+'M':''},
+        annotation:{annotations:{
+          ship1:{type:'line',xMin:2,xMax:2,borderColor:'#7FBA00',borderWidth:1,borderDash:[4,4],
+            label:{display:true,content:'Social Play Shipped',position:'start',color:'#7FBA00',font:{size:9}}},
+          ship2:{type:'line',xMin:5,xMax:5,borderColor:'#7FBA00',borderWidth:1,borderDash:[4,4],
+            label:{display:true,content:'AI Recs Shipped',position:'start',color:'#7FBA00',font:{size:9}}},
+        }}
+      },
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#8B949E'}},
+        y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#8B949E',callback:v=>'$'+v+'M'}}
+      }
+    }
+  });
+}
+
+function buildRevenueBridge(tabId) {
+  if(tabId !== 'total') return '';
+  return `<div class="card"><div class="card-title">🌉 Revenue Bridge — Monthly Waterfall ($M)</div>
+    <div class="chart-box"><canvas id="rev-bridge"></canvas></div></div>`;
+}
+
+function renderRevenueBridge(data) {
+  const c = document.getElementById('rev-bridge');
+  if(!c) return;
+  const rb = data.revBridge;
+  // waterfall: floating bars
+  const base = []; const vals = []; const colors = [];
+  let running = 0;
+  rb.values.forEach((v,i) => {
+    if(i===0 || i===rb.values.length-1) { base.push(0); vals.push(v); }
+    else { if(v>=0){base.push(running);vals.push(v);}else{base.push(running+v);vals.push(-v);} }
+    running = (i===0) ? v : running + (i<rb.values.length-1 ? v : 0);
+    colors.push(rb.colors[i]);
+  });
+  charts['rev-bridge'] = new Chart(c, {
+    type:'bar',
+    data:{
+      labels:rb.labels,
+      datasets:[
+        {label:'Base',data:base,backgroundColor:'transparent',borderWidth:0,barPercentage:0.6},
+        {label:'Change',data:vals,backgroundColor:colors,borderRadius:3,barPercentage:0.6},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        datalabels:{display:true,color:'#E6EDF3',font:{size:10,weight:600},anchor:'end',align:'top',
+          formatter:(v,ctx)=>ctx.datasetIndex===1?(rb.values[ctx.dataIndex]>=0?'+':'')+'$'+rb.values[ctx.dataIndex]+'M':''}
+      },
+      scales:{
+        x:{stacked:true,grid:{display:false},ticks:{color:'#8B949E',font:{size:10},maxRotation:45}},
+        y:{stacked:true,grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#8B949E',callback:v=>'$'+v+'M'}}
+      }
+    }
+  });
+}
+
+function buildCompetitive(tabId) {
+  if(tabId !== 'total') return '';
+  const d = D.total.competitive;
+  const rows = d.map(r => `<tr>
+    <td style="font-weight:600">${r[0]}</td>
+    <td style="color:var(--green-light)">${r[1]}</td>
+    <td>${r[2]}</td><td>${r[3]}</td></tr>`).join('');
+  return `<div class="card"><div class="card-title">⚔️ Competitive Benchmarking (Illustrative)</div>
+    <div style="overflow-x:auto"><table class="data-table">
+    <thead><tr><th>Metric</th><th style="color:var(--green)">Xbox</th><th>PlayStation</th><th>Nintendo</th></tr></thead>
+    <tbody>${rows}</tbody></table></div></div>`;
+}
+
+function buildQBR(tabId) {
+  if(tabId !== 'total') return '';
+  return `<div class="section"><div class="section-title">Quarterly Business Review Summary</div>
+    <div class="grid-2">${D.total.qbr.map(q => `
+      <div class="qbr-card" style="border-left-color:${q.border}">
+        <h4>${q.title}</h4><p>${q.text}</p>
+      </div>`).join('')}</div></div>`;
+}
+
+function buildRiskRegister(tabId) {
+  if(tabId !== 'total') return '';
+  const rows = D.total.risks.map(r => {
+    const cls = r[4]==='🔴'?'badge-red':r[4]==='🟡'?'badge-yellow':'badge-green';
+    return `<tr>
+      <td style="font-weight:600">${r[0]}</td>
+      <td><span class="badge ${cls}">${r[1]}</span></td>
+      <td style="color:var(--text-dim)">${r[2]}</td>
+      <td>${r[3]}</td></tr>`;
+  }).join('');
+  return `<div class="card"><div class="card-title">⚠️ Risk Register</div>
+    <div style="overflow-x:auto"><table class="data-table">
+    <thead><tr><th>Risk</th><th>Severity</th><th>Description</th><th>Mitigation</th></tr></thead>
+    <tbody>${rows}</tbody></table></div></div>`;
+}
+
+function buildInitiatives(tabId) {
+  if(tabId !== 'total') return '';
+  const rows = D.total.initiatives.map(r => {
+    const cls = r[1]==='On Track'?'badge-green':r[1]==='At Risk'?'badge-yellow':'badge-red';
+    return `<tr>
+      <td style="font-weight:600">${r[0]}</td>
+      <td><span class="badge ${cls}">${r[1]}</span></td>
+      <td><div class="progress-bar" style="width:120px"><div class="progress-fill" style="width:${r[2]}%;background:${r[3]}"></div></div>
+        <span style="font-size:10px;color:var(--text-dim);margin-left:6px">${r[2]}%</span></td>
+      <td style="color:var(--text-dim)">${r[4]}</td></tr>`;
+  }).join('');
+  return `<div class="card"><div class="card-title">🚀 Strategic Initiatives Tracker</div>
+    <div style="overflow-x:auto"><table class="data-table">
+    <thead><tr><th>Initiative</th><th>Status</th><th>Progress</th><th>Next Milestone</th></tr></thead>
+    <tbody>${rows}</tbody></table></div></div>`;
+}
+
+function buildGrowthSection(data, tabId) {
+  return `<div class="section"><div class="section-title">Growth</div>
+    <div class="grid-2">
+      <div class="card"><div class="card-title">📈 MAU & DAU Trend</div><div class="chart-box"><canvas id="growth-mau-${tabId}"></canvas></div></div>
+      <div class="card"><div class="card-title">🌱 New User Acquisition</div><div class="chart-box"><canvas id="growth-acq-${tabId}"></canvas></div></div>
+    </div></div>`;
+}
+
+function buildEngagementSection(data, tabId) {
+  return `<div class="section"><div class="section-title">Engagement</div>
+    <div class="grid-2">
+      <div class="card"><div class="card-title">⏱️ Session Duration & Frequency</div><div class="chart-box"><canvas id="eng-sess-${tabId}"></canvas></div></div>
+      <div class="card"><div class="card-title">📊 D7 & D30 Retention</div><div class="chart-box"><canvas id="eng-ret-${tabId}"></canvas></div></div>
+    </div></div>`;
+}
+
+function buildMonetizationSection(data, tabId) {
+  return `<div class="section"><div class="section-title">Monetization</div>
+    <div class="grid-2">
+      <div class="card"><div class="card-title">💰 ARPU & ARPPU</div><div class="chart-box"><canvas id="mon-arpu-${tabId}"></canvas></div></div>
+      <div class="card"><div class="card-title">📈 Revenue Trend</div><div class="chart-box"><canvas id="mon-rev-${tabId}"></canvas></div></div>
+    </div></div>`;
+}
+
+function buildRetentionSection(data, tabId) {
+  return `<div class="section"><div class="section-title">Retention</div>
+    <div class="grid-2">
+      <div class="card"><div class="card-title">🔄 Retention Cohorts</div><div class="chart-box"><canvas id="ret-coh-${tabId}"></canvas></div></div>
+      <div class="card"><div class="card-title">📉 Churn & LTV</div><div class="chart-box"><canvas id="ret-ltv-${tabId}"></canvas></div></div>
+    </div></div>`;
+}
+
+function lineChart(id, datasets, yCallback) {
+  const c = document.getElementById(id);
+  if(!c) return;
+  charts[id] = new Chart(c, {
+    type:'line',
+    data:{labels:MONTHS,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'top',labels:{color:'#8B949E',font:{size:11},boxWidth:12}},datalabels:{display:false}},
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#8B949E',font:{size:10}}},
+        y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#8B949E',font:{size:10},callback:yCallback||undefined}}
+      }
+    }
+  });
+}
+
+function renderGrowthCharts(data, tabId) {
+  lineChart(`growth-mau-${tabId}`, [
+    {label:'MAU',data:data.mau,borderColor:'#107C10',backgroundColor:'rgba(16,124,16,0.1)',fill:true,tension:0.3,pointRadius:3},
+    {label:'DAU',data:data.dau,borderColor:'#0078D4',backgroundColor:'rgba(0,120,212,0.1)',fill:true,tension:0.3,pointRadius:3},
+  ]);
+  lineChart(`growth-acq-${tabId}`, [
+    {label:'Total New',data:data.growth.newUsers,borderColor:'#7FBA00',tension:0.3,pointRadius:3,borderWidth:2},
+    {label:'Organic',data:data.growth.organic,borderColor:'#0078D4',tension:0.3,pointRadius:3,borderWidth:2},
+    {label:'Paid',data:data.growth.paid,borderColor:'#FF8C00',tension:0.3,pointRadius:3,borderWidth:2},
+    {label:'Viral',data:data.growth.viral,borderColor:'#7B68EE',tension:0.3,pointRadius:3,borderWidth:2},
+  ]);
+}
+
+function renderEngagementCharts(data, tabId) {
+  lineChart(`eng-sess-${tabId}`, [
+    {label:'Sessions/User/Wk',data:data.engagement.sessions,borderColor:'#0078D4',tension:0.3,pointRadius:3,borderWidth:2,yAxisID:'y'},
+    {label:'Avg Duration (min)',data:data.engagement.duration,borderColor:'#FF8C00',tension:0.3,pointRadius:3,borderWidth:2,yAxisID:'y1'},
+  ]);
+  // Override for dual axis
+  const c = document.getElementById(`eng-sess-${tabId}`);
+  if(c && charts[`eng-sess-${tabId}`]) {
+    charts[`eng-sess-${tabId}`].options.scales.y1 = {
+      position:'right',grid:{drawOnChartArea:false},ticks:{color:'#FF8C00',font:{size:10}}
+    };
+    charts[`eng-sess-${tabId}`].update();
+  }
+  lineChart(`eng-ret-${tabId}`, [
+    {label:'D7 Retention',data:data.engagement.d7,borderColor:'#107C10',tension:0.3,pointRadius:3,borderWidth:2},
+    {label:'D30 Retention',data:data.engagement.d30,borderColor:'#7B68EE',tension:0.3,pointRadius:3,borderWidth:2},
+  ], v=>v+'%');
+}
+
+function renderMonetizationCharts(data, tabId) {
+  lineChart(`mon-arpu-${tabId}`, [
+    {label:'ARPU',data:data.monetization.arpu,borderColor:'#107C10',tension:0.3,pointRadius:3,borderWidth:2},
+    {label:'ARPPU',data:data.monetization.arppu,borderColor:'#FFB900',tension:0.3,pointRadius:3,borderWidth:2},
+  ], v=>'$'+v);
+  lineChart(`mon-rev-${tabId}`, [
+    {label:'Revenue',data:data.revenue,borderColor:'#7FBA00',backgroundColor:'rgba(127,186,0,0.12)',fill:true,tension:0.3,pointRadius:3,borderWidth:2},
+  ]);
+}
+
+function renderRetentionCharts(data, tabId) {
+  lineChart(`ret-coh-${tabId}`, [
+    {label:'M1',data:data.retentionCohort.m1,borderColor:'#107C10',tension:0.3,pointRadius:3,borderWidth:2},
+    {label:'M3',data:data.retentionCohort.m3,borderColor:'#0078D4',tension:0.3,pointRadius:3,borderWidth:2},
+    {label:'M6',data:data.retentionCohort.m6,borderColor:'#FF8C00',tension:0.3,pointRadius:3,borderWidth:2},
+    {label:'M12',data:data.retentionCohort.m12,borderColor:'#7B68EE',tension:0.3,pointRadius:3,borderWidth:2},
+  ], v=>v+'%');
+  lineChart(`ret-ltv-${tabId}`, [
+    {label:'LTV ($)',data:data.monetization.ltv,borderColor:'#FFB900',tension:0.3,pointRadius:3,borderWidth:2},
+    {label:'Conv Rate (%)',data:data.monetization.convRate,borderColor:'#E81123',tension:0.3,pointRadius:3,borderWidth:2},
+  ]);
+}
+
+// ── TAB BUILDER ──
+function renderTab(tabId) {
+  destroyCharts();
+  const data = D[tabId];
+  if(!data) return;
+
+  let html = `<div style="margin-bottom:20px">
+    <h2 style="font-size:22px;font-weight:800;letter-spacing:-0.5px;margin-bottom:4px">${data.label}</h2>
+    <p style="font-size:12px;color:var(--text-dim)">Executive KPIs & Experiments — 12-month view (May 2025 – Apr 2026)</p>
+  </div>`;
+
+  // EXEC KPI TILES
+  html += `<div class="section"><div class="section-title">Executive KPI Summary</div>${buildKPIHeroTiles(data)}</div>`;
+
+  // SCORECARD
+  html += `<div class="section"><div class="section-title">KPI Scorecard</div>${buildScorecardTable(data)}</div>`;
+
+  // GOALS & TARGETS
+  html += `<div class="section"><div class="section-title">Goals & Targets</div>${buildGoalsTargets(data, tabId)}</div>`;
+
+  // EXPERIMENTS (total only)
+  if(data.experiments) {
+    html += `<div class="section"><div class="section-title">Experiments & A/B Tests</div>
+      ${buildExperimentsTable(data)}
+      ${buildExperimentTimeline(tabId)}</div>`;
+  }
+
+  // REVENUE BRIDGE (total only)
+  html += buildRevenueBridge(tabId);
+
+  // COMPETITIVE (total only)
+  if(tabId === 'total') {
+    html += `<div class="section"><div class="section-title">Competitive Landscape</div>${buildCompetitive(tabId)}</div>`;
+  }
+
+  // QBR (total only)
+  html += buildQBR(tabId);
+
+  // RISK REGISTER (total only)
+  if(tabId === 'total') {
+    html += `<div class="section"><div class="section-title">Risk Management</div>
+      ${buildRiskRegister(tabId)}${buildInitiatives(tabId)}</div>`;
+  }
+
+  // GROWTH, ENGAGEMENT, MONETIZATION, RETENTION
+  html += buildGrowthSection(data, tabId);
+  html += buildEngagementSection(data, tabId);
+  html += buildMonetizationSection(data, tabId);
+  html += buildRetentionSection(data, tabId);
+
+  document.getElementById('mainContent').innerHTML = html;
+
+  // Render charts after DOM update
+  requestAnimationFrame(() => {
+    renderSparklines(data, data.color);
+    renderGoalsChart(data, tabId);
+    if(tabId === 'total') {
+      renderExperimentTimeline();
+      renderRevenueBridge(data);
+    }
+    renderGrowthCharts(data, tabId);
+    renderEngagementCharts(data, tabId);
+    renderMonetizationCharts(data, tabId);
+    renderRetentionCharts(data, tabId);
+  });
+}
+
+// ── NAV ──
+document.querySelectorAll('.sidebar-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+    renderTab(item.dataset.tab);
+  });
+});
+
+// ── INIT ──
+document.getElementById('headerDate').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+Chart.register(ChartDataLabels);
+renderTab('total');
+</script>
+</body>
+</html>

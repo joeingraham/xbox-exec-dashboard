@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Xbox Executive Dashboard — Per-Game Breakdown</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+<style>
+:root {
+  --bg: #0D1117; --card: #161B22; --border: #21262D; --text: #E6EDF3;
+  --text-muted: #8B949E; --text-dim: #484F58;
+  --green: #107C10; --green-light: #10893E; --lime: #7FBA00;
+  --blue: #0078D4; --purple: #7B68EE; --orange: #FF8C00;
+  --red: #E81123; --gold: #FFB900;
+  --halo: #00A4EF; --forza: #FF6B00; --cod: #556B2F;
+  --minecraft: #5D8C3E; --sot: #DAA520; --starfield: #6B5B95;
+  --gears: #DC143C;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+/* ── Header ── */
+.header{position:fixed;top:0;left:0;right:0;z-index:100;background:linear-gradient(135deg,#0D1117 0%,#161B22 100%);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;gap:16px}
+.header .logo{font-size:20px;font-weight:800;color:#fff;display:flex;align-items:center;gap:10px}
+.header .logo span{color:var(--green)}
+.header .subtitle{color:var(--text-muted);font-size:13px;font-weight:400;margin-left:4px}
+.header .badge{margin-left:auto;background:var(--green);color:#fff;font-size:11px;font-weight:600;padding:3px 10px;border-radius:10px}
+.header .ts{color:var(--text-dim);font-size:11px;margin-left:12px}
+
+/* ── Tab Bar ── */
+.tab-bar{position:fixed;top:56px;left:0;right:0;z-index:99;background:#0f1318;border-bottom:2px solid var(--border);display:flex;align-items:stretch;padding:0 12px;height:48px;overflow-x:auto;scrollbar-width:none}
+.tab-bar::-webkit-scrollbar{display:none}
+.tab-btn{display:flex;align-items:center;gap:7px;padding:0 18px;font-family:inherit;font-size:13px;font-weight:600;color:var(--text-muted);background:none;border:none;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap;transition:all .2s ease;position:relative}
+.tab-btn:hover{color:var(--text);background:rgba(255,255,255,.04)}
+.tab-btn.active{color:#fff;border-bottom-color:var(--tab-color,var(--green))}
+.tab-btn .dot{width:8px;height:8px;border-radius:50%;background:var(--tab-color,var(--green));opacity:.6;transition:opacity .2s}
+.tab-btn.active .dot{opacity:1;box-shadow:0 0 8px var(--tab-color,var(--green))}
+.tab-btn .icon{font-size:16px}
+
+/* ── Main Content ── */
+.main{margin-top:106px;padding:20px 24px 40px}
+
+/* Tab Panels */
+.tab-panel{display:none;animation:fadeIn .35s ease}
+.tab-panel.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* Section titles */
+.section-title{font-size:14px;font-weight:700;color:var(--text);margin:28px 0 14px;display:flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:.5px}
+.section-title::before{content:'';width:4px;height:18px;border-radius:2px;background:var(--accent,var(--green))}
+.section-title:first-child{margin-top:0}
+
+/* ── KPI Tiles ── */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:8px}
+.kpi-tile{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;position:relative;overflow:hidden}
+.kpi-tile::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent,var(--green))}
+.kpi-tile .label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.kpi-tile .value{font-size:28px;font-weight:800;color:#fff;line-height:1.1}
+.kpi-tile .delta{display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:600;margin-top:6px;padding:2px 8px;border-radius:6px}
+.kpi-tile .delta.up{color:#3fb950;background:rgba(63,185,80,.12)}
+.kpi-tile .delta.down{color:var(--red);background:rgba(232,17,35,.12)}
+.kpi-tile .sub{font-size:11px;color:var(--text-dim);margin-top:4px}
+
+/* ── Charts Grid ── */
+.chart-grid{display:grid;gap:14px;margin-bottom:8px}
+.chart-grid.g2{grid-template-columns:repeat(2,1fr)}
+.chart-grid.g3{grid-template-columns:repeat(3,1fr)}
+.chart-grid.g23{grid-template-columns:2fr 1fr}
+.chart-grid.g32{grid-template-columns:3fr 2fr}
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;position:relative}
+.chart-card .card-title{font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.3px}
+.chart-card canvas{width:100%!important}
+
+/* ── Funnel ── */
+.funnel-wrap{display:flex;align-items:center;gap:0;justify-content:center;padding:12px 0}
+.funnel-step{text-align:center;position:relative;flex:1;max-width:160px}
+.funnel-bar{margin:0 auto 8px;border-radius:8px;background:var(--accent,var(--green));opacity:.85;transition:all .3s}
+.funnel-step .f-val{font-size:18px;font-weight:800;color:#fff}
+.funnel-step .f-label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.3px;margin-top:2px}
+.funnel-step .f-pct{font-size:11px;color:var(--accent,var(--green));font-weight:700;margin-top:2px}
+.funnel-arrow{color:var(--text-dim);font-size:18px;margin:0 -4px;flex-shrink:0}
+
+/* ── Segments ── */
+.seg-bars{display:flex;gap:10px;align-items:flex-end;justify-content:center;padding:20px 0 8px}
+.seg-col{text-align:center}
+.seg-col .bar{width:56px;border-radius:6px 6px 0 0;margin:0 auto 6px;min-height:8px;transition:height .4s}
+.seg-col .s-pct{font-size:14px;font-weight:700;color:#fff}
+.seg-col .s-label{font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-top:2px}
+
+/* ── Responsive ── */
+@media(max-width:1100px){.kpi-row{grid-template-columns:repeat(2,1fr)}.chart-grid.g2,.chart-grid.g3,.chart-grid.g23,.chart-grid.g32{grid-template-columns:1fr}}
+@media(max-width:700px){.kpi-row{grid-template-columns:1fr}.tab-btn{padding:0 12px;font-size:12px}}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="logo">⬡ <span>Xbox</span> Executive Dashboard</div>
+  <div class="subtitle">Per-Game Analytics · Variant 5</div>
+  <div class="badge">LIVE</div>
+  <div class="ts" id="timestamp"></div>
+</div>
+
+<!-- Tab Bar -->
+<div class="tab-bar" id="tabBar"></div>
+
+<!-- Main -->
+<div class="main" id="mainContent"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════
+const MONTHS = ['May 25','Jun 25','Jul 25','Aug 25','Sep 25','Oct 25','Nov 25','Dec 25','Jan 26','Feb 26','Mar 26','Apr 26'];
+
+const GAMES = [
+  {
+    id:'all', name:'All Xbox', icon:'🎮', color:'#10893E',
+    mau:'120M', mauDelta:'+8.2%', minPerDay:'47', minDelta:'+5.1%',
+    revenue:'$2.4B', revDelta:'+12.3%', retention:'68%', retDelta:'+2.1pp',
+    funnel:[120,98,78,62,51,42],
+    mauTrend:[112,114,115,116,117,118,119,121,123,122,121,120],
+    dauTrend:[38,39,40,41,42,43,45,48,46,44,42,41],
+    minTrend:[42,43,43,44,44,45,46,48,47,46,46,47],
+    revTrend:[180,185,190,195,192,198,210,240,215,200,195,205],
+    arpu:[1.50,1.53,1.57,1.60,1.58,1.62,1.71,1.92,1.70,1.64,1.61,1.68],
+    mtxConv:[6.2,6.3,6.4,6.5,6.4,6.6,7.0,7.8,7.1,6.8,6.6,6.9],
+    dlcAttach:[18,18.5,19,19.2,19,19.5,20,21.5,20.5,20,19.8,20.2],
+    retCurve:{d1:72,d7:55,d14:45,d30:38},
+    segments:{casual:52,core:33,hardcore:15},
+    platform:{console:58,pc:28,cloud:14}
+  },
+  {
+    id:'gamepass', name:'Game Pass', icon:'🎯', color:'#0078D4',
+    mau:'34M', mauDelta:'+11.5%', minPerDay:'62', minDelta:'+7.8%',
+    revenue:'$680M', revDelta:'+18.2%', retention:'74%', retDelta:'+3.4pp',
+    funnel:[34,30,26,22,19,16],
+    mauTrend:[28,29,29.5,30,30.5,31,31.5,33,34,34.5,34,34],
+    dauTrend:[14,14.5,15,15.5,16,16.5,17,18.5,17.5,17,16.5,16],
+    minTrend:[54,55,56,57,58,59,60,65,63,62,61,62],
+    revTrend:[48,50,52,54,53,55,58,68,60,57,55,58],
+    arpu:[1.41,1.45,1.49,1.52,1.50,1.55,1.64,1.84,1.62,1.56,1.53,1.60],
+    mtxConv:[8.1,8.3,8.5,8.7,8.5,8.8,9.2,10.1,9.4,9.0,8.8,9.1],
+    dlcAttach:[22,22.5,23,23.2,23,23.5,24,26,25,24.5,24.2,24.5],
+    retCurve:{d1:78,d7:62,d14:52,d30:44},
+    segments:{casual:42,core:38,hardcore:20},
+    platform:{console:52,pc:32,cloud:16}
+  },
+  {
+    id:'halo', name:'Halo', icon:'⚔️', color:'#00A4EF',
+    mau:'8.2M', mauDelta:'+3.1%', minPerDay:'58', minDelta:'+4.2%',
+    revenue:'$145M', revDelta:'+6.8%', retention:'62%', retDelta:'+1.5pp',
+    funnel:[8.2,6.8,5.4,4.1,3.2,2.6],
+    mauTrend:[7.4,7.5,7.6,7.7,7.8,7.9,8.0,8.4,8.3,8.2,8.1,8.2],
+    dauTrend:[2.8,2.9,3.0,3.1,3.2,3.3,3.4,3.8,3.5,3.3,3.2,3.1],
+    minTrend:[52,53,54,55,56,57,58,62,59,57,56,58],
+    revTrend:[10.5,10.8,11.0,11.5,11.2,11.8,12.5,14.5,13.0,12.2,11.8,12.5],
+    arpu:[1.28,1.31,1.34,1.38,1.35,1.40,1.48,1.63,1.47,1.41,1.38,1.44],
+    mtxConv:[5.8,5.9,6.0,6.2,6.1,6.3,6.6,7.2,6.7,6.4,6.3,6.5],
+    dlcAttach:[15,15.5,16,16.2,16,16.5,17,18.5,17.5,17,16.8,17],
+    retCurve:{d1:68,d7:50,d14:40,d30:32},
+    segments:{casual:45,core:37,hardcore:18},
+    platform:{console:62,pc:30,cloud:8}
+  },
+  {
+    id:'forza', name:'Forza', icon:'🏎️', color:'#FF6B00',
+    mau:'14.5M', mauDelta:'+9.8%', minPerDay:'44', minDelta:'+6.1%',
+    revenue:'$310M', revDelta:'+14.5%', retention:'71%', retDelta:'+2.8pp',
+    funnel:[14.5,12.2,10.1,8.4,7.0,5.8],
+    mauTrend:[12.0,12.3,12.5,12.8,13.0,13.3,13.5,14.2,14.5,14.6,14.4,14.5],
+    dauTrend:[5.2,5.4,5.5,5.7,5.8,6.0,6.2,6.8,6.4,6.1,5.9,5.8],
+    minTrend:[38,39,40,41,42,42,43,46,45,44,43,44],
+    revTrend:[22,23,24,25,24.5,25.5,27,31,28,26,25,26.5],
+    arpu:[1.52,1.55,1.60,1.63,1.58,1.65,1.72,1.88,1.66,1.60,1.58,1.65],
+    mtxConv:[7.5,7.7,7.9,8.1,7.8,8.2,8.6,9.5,8.8,8.4,8.2,8.5],
+    dlcAttach:[24,24.5,25,25.5,25,25.5,26,28,27,26.5,26,26.5],
+    retCurve:{d1:75,d7:58,d14:48,d30:40},
+    segments:{casual:48,core:36,hardcore:16},
+    platform:{console:55,pc:35,cloud:10}
+  },
+  {
+    id:'cod', name:'Call of Duty', icon:'🎯', color:'#556B2F',
+    mau:'32M', mauDelta:'+6.4%', minPerDay:'72', minDelta:'+3.9%',
+    revenue:'$580M', revDelta:'+9.2%', retention:'65%', retDelta:'+1.2pp',
+    funnel:[32,27,22,17.5,14,11.5],
+    mauTrend:[28,28.5,29,29.5,30,30.5,31,33,32.5,32,31.5,32],
+    dauTrend:[15,15.5,16,16.5,17,17.5,18,20,19,18,17.5,17],
+    minTrend:[65,66,67,68,69,70,71,76,74,72,71,72],
+    revTrend:[42,43,44,46,45,47,50,58,52,48,46,48],
+    arpu:[1.31,1.34,1.37,1.41,1.38,1.43,1.52,1.68,1.50,1.44,1.40,1.46],
+    mtxConv:[9.2,9.4,9.6,9.8,9.5,9.9,10.4,11.5,10.6,10.1,9.8,10.2],
+    dlcAttach:[20,20.5,21,21.5,21,21.5,22,24,23,22.5,22,22.5],
+    retCurve:{d1:70,d7:52,d14:42,d30:35},
+    segments:{casual:38,core:42,hardcore:20},
+    platform:{console:65,pc:28,cloud:7}
+  },
+  {
+    id:'minecraft', name:'Minecraft', icon:'⛏️', color:'#5D8C3E',
+    mau:'42M', mauDelta:'+12.1%', minPerDay:'38', minDelta:'+8.5%',
+    revenue:'$420M', revDelta:'+15.8%', retention:'78%', retDelta:'+3.8pp',
+    funnel:[42,38,34,29,25,21],
+    mauTrend:[35,36,37,37.5,38,39,40,42,43,43,42.5,42],
+    dauTrend:[12,12.5,13,13.5,14,14.5,15,17,16,15.5,15,14.5],
+    minTrend:[32,33,34,34,35,35,36,39,38,37,37,38],
+    revTrend:[30,31,32,34,33,35,37,42,38,36,35,37],
+    arpu:[0.71,0.73,0.75,0.79,0.76,0.81,0.85,0.92,0.82,0.78,0.76,0.81],
+    mtxConv:[4.5,4.6,4.7,4.9,4.8,5.0,5.3,5.8,5.4,5.1,5.0,5.2],
+    dlcAttach:[28,28.5,29,29.5,29,29.5,30,32,31,30.5,30,30.5],
+    retCurve:{d1:82,d7:68,d14:58,d30:48},
+    segments:{casual:62,core:28,hardcore:10},
+    platform:{console:42,pc:38,cloud:20}
+  },
+  {
+    id:'sot', name:'Sea of Thieves', icon:'🏴‍☠️', color:'#DAA520',
+    mau:'6.5M', mauDelta:'+18.3%', minPerDay:'55', minDelta:'+9.2%',
+    revenue:'$95M', revDelta:'+22.1%', retention:'69%', retDelta:'+4.1pp',
+    funnel:[6.5,5.6,4.6,3.7,3.0,2.5],
+    mauTrend:[4.8,5.0,5.2,5.4,5.5,5.7,5.9,6.3,6.5,6.6,6.5,6.5],
+    dauTrend:[1.8,1.9,2.0,2.1,2.2,2.3,2.4,2.7,2.6,2.5,2.4,2.3],
+    minTrend:[46,47,48,49,50,51,52,56,55,54,54,55],
+    revTrend:[6.0,6.5,7.0,7.5,7.2,7.8,8.5,10.0,9.0,8.5,8.2,8.8],
+    arpu:[0.92,0.96,1.00,1.04,1.00,1.06,1.12,1.24,1.10,1.04,1.02,1.08],
+    mtxConv:[6.8,7.0,7.2,7.4,7.2,7.5,7.9,8.8,8.2,7.8,7.6,7.9],
+    dlcAttach:[16,16.5,17,17.5,17,17.5,18,20,19,18.5,18,18.5],
+    retCurve:{d1:73,d7:56,d14:46,d30:38},
+    segments:{casual:50,core:35,hardcore:15},
+    platform:{console:48,pc:35,cloud:17}
+  },
+  {
+    id:'starfield', name:'Starfield', icon:'🚀', color:'#6B5B95',
+    mau:'5.8M', mauDelta:'+25.4%', minPerDay:'68', minDelta:'+12.1%',
+    revenue:'$88M', revDelta:'+28.5%', retention:'61%', retDelta:'+5.2pp',
+    funnel:[5.8,4.9,3.9,3.0,2.3,1.8],
+    mauTrend:[3.8,4.0,4.2,4.5,4.7,4.9,5.1,5.6,5.8,5.9,5.8,5.8],
+    dauTrend:[1.5,1.6,1.7,1.8,1.9,2.0,2.1,2.4,2.3,2.2,2.1,2.0],
+    minTrend:[58,59,60,62,63,64,65,70,69,68,67,68],
+    revTrend:[5.0,5.5,6.0,6.5,6.2,6.8,7.5,9.0,8.2,7.5,7.2,7.8],
+    arpu:[0.86,0.91,0.95,1.00,0.96,1.02,1.10,1.24,1.08,1.01,0.98,1.04],
+    mtxConv:[5.2,5.4,5.6,5.8,5.6,5.9,6.2,7.0,6.5,6.2,6.0,6.3],
+    dlcAttach:[12,12.5,13,13.5,13,13.5,14,16,15,14.5,14,14.5],
+    retCurve:{d1:66,d7:48,d14:38,d30:30},
+    segments:{casual:40,core:40,hardcore:20},
+    platform:{console:50,pc:40,cloud:10}
+  },
+  {
+    id:'gears', name:'Gears', icon:'🔫', color:'#DC143C',
+    mau:'7.1M', mauDelta:'+5.6%', minPerDay:'52', minDelta:'+3.4%',
+    revenue:'$125M', revDelta:'+7.9%', retention:'64%', retDelta:'+1.8pp',
+    funnel:[7.1,6.0,4.8,3.8,3.0,2.4],
+    mauTrend:[6.2,6.3,6.4,6.5,6.6,6.7,6.8,7.2,7.1,7.1,7.0,7.1],
+    dauTrend:[2.5,2.6,2.6,2.7,2.8,2.8,2.9,3.2,3.0,2.9,2.8,2.7],
+    minTrend:[47,48,48,49,50,50,51,54,53,52,51,52],
+    revTrend:[9.0,9.2,9.5,9.8,9.5,10.0,10.5,12.5,11.5,10.8,10.5,11.0],
+    arpu:[1.27,1.30,1.33,1.37,1.32,1.38,1.45,1.60,1.44,1.38,1.36,1.42],
+    mtxConv:[6.0,6.1,6.2,6.4,6.2,6.5,6.8,7.5,7.0,6.7,6.5,6.8],
+    dlcAttach:[17,17.5,18,18.2,18,18.5,19,21,20,19.5,19,19.5],
+    retCurve:{d1:69,d7:51,d14:41,d30:33},
+    segments:{casual:44,core:38,hardcore:18},
+    platform:{console:68,pc:25,cloud:7}
+  }
+];
+
+// Chart.js global defaults
+Chart.defaults.color = '#8B949E';
+Chart.defaults.font.family = 'Inter';
+Chart.defaults.font.size = 11;
+Chart.defaults.plugins.legend.labels.usePointStyle = true;
+Chart.defaults.plugins.legend.labels.pointStyleWidth = 8;
+Chart.defaults.plugins.legend.labels.padding = 14;
+Chart.defaults.elements.line.tension = 0.35;
+Chart.defaults.elements.line.borderWidth = 2.5;
+Chart.defaults.elements.point.radius = 0;
+Chart.defaults.elements.point.hoverRadius = 5;
+Chart.defaults.scale.grid = {color:'rgba(255,255,255,.06)',drawBorder:false};
+Chart.defaults.scale.ticks = {padding:6};
+
+// ═══════════════════════════════════════════
+// BUILD UI
+// ═══════════════════════════════════════════
+document.getElementById('timestamp').textContent = new Date().toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'});
+
+const tabBar = document.getElementById('tabBar');
+const main = document.getElementById('mainContent');
+
+// Build tabs and panels
+GAMES.forEach((g,i)=>{
+  // Tab button
+  const btn = document.createElement('button');
+  btn.className = 'tab-btn' + (i===0?' active':'');
+  btn.style.setProperty('--tab-color', g.color);
+  btn.innerHTML = `<span class="icon">${g.icon}</span><span class="dot" style="background:${g.color}"></span>${g.name}`;
+  btn.onclick = () => switchTab(g.id);
+  btn.dataset.tab = g.id;
+  tabBar.appendChild(btn);
+
+  // Panel
+  const panel = document.createElement('div');
+  panel.className = 'tab-panel' + (i===0?' active':'');
+  panel.id = 'panel-'+g.id;
+  panel.innerHTML = buildPanel(g);
+  main.appendChild(panel);
+});
+
+function switchTab(id){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===id));
+  document.querySelectorAll('.tab-panel').forEach(p=>{
+    const isActive = p.id==='panel-'+id;
+    p.classList.toggle('active',isActive);
+  });
+  // Lazy-render charts
+  setTimeout(()=>renderCharts(id),60);
+}
+
+function buildPanel(g){
+  const accentCSS = `--accent:${g.color}`;
+  const funnelLabels = ['Installs','1st Session','D1 Return','D7 Return','D14 Return','D30 Return'];
+  const funnelHTML = g.funnel.map((v,i)=>{
+    const pct = i===0?'100%': (v/g.funnel[0]*100).toFixed(0)+'%';
+    const h = 12 + (v/g.funnel[0])*80;
+    const w = 40 + (v/g.funnel[0])*60;
+    const arrow = i<g.funnel.length-1?`<span class="funnel-arrow">→</span>`:'';
+    const fmt = v>=1? (v>=100?v.toFixed(0)+'M':v.toFixed(1)+'M') : (v*1000).toFixed(0)+'K';
+    return `<div class="funnel-step"><div class="funnel-bar" style="width:${w}%;height:${h}px;background:${g.color}"></div><div class="f-val">${fmt}</div><div class="f-label">${funnelLabels[i]}</div><div class="f-pct" style="color:${g.color}">${pct}</div></div>${arrow}`;
+  }).join('');
+
+  const segColors = {casual:'#49CCF9',core:'#7FBA00',hardcore:'#FF8C00'};
+  const segHTML = Object.entries(g.segments).map(([k,v])=>{
+    const h = v*2.2;
+    return `<div class="seg-col"><div class="bar" style="height:${h}px;background:${segColors[k]}"></div><div class="s-pct">${v}%</div><div class="s-label">${k}</div></div>`;
+  }).join('');
+
+  return `
+  <div style="${accentCSS}">
+    <!-- KPIs -->
+    <div class="section-title" style="${accentCSS}">Key Performance Indicators</div>
+    <div class="kpi-row">
+      <div class="kpi-tile" style="${accentCSS}"><div class="label">Monthly Active Users</div><div class="value">${g.mau}</div><div class="delta up">▲ ${g.mauDelta}</div><div class="sub">vs. prior year</div></div>
+      <div class="kpi-tile" style="${accentCSS}"><div class="label">Avg Min / Day</div><div class="value">${g.minPerDay}</div><div class="delta up">▲ ${g.minDelta}</div><div class="sub">engagement depth</div></div>
+      <div class="kpi-tile" style="${accentCSS}"><div class="label">Revenue (MTX+DLC)</div><div class="value">${g.revenue}</div><div class="delta up">▲ ${g.revDelta}</div><div class="sub">trailing 12 months</div></div>
+      <div class="kpi-tile" style="${accentCSS}"><div class="label">M3 Retention</div><div class="value">${g.retention}</div><div class="delta up">▲ ${g.retDelta}</div><div class="sub">3-month cohort</div></div>
+    </div>
+
+    <!-- Funnel -->
+    <div class="section-title" style="${accentCSS}">Player Funnel</div>
+    <div class="chart-card"><div class="funnel-wrap">${funnelHTML}</div></div>
+
+    <!-- Engagement -->
+    <div class="section-title" style="${accentCSS}">Engagement Trends (12 Mo)</div>
+    <div class="chart-grid g2">
+      <div class="chart-card"><div class="card-title">MAU & DAU</div><canvas id="ch-maudau-${g.id}" height="220"></canvas></div>
+      <div class="chart-card"><div class="card-title">Avg Minutes Played / Day</div><canvas id="ch-min-${g.id}" height="220"></canvas></div>
+    </div>
+
+    <!-- Monetization -->
+    <div class="section-title" style="${accentCSS}">Monetization</div>
+    <div class="chart-grid g2">
+      <div class="chart-card"><div class="card-title">Revenue & ARPU</div><canvas id="ch-rev-${g.id}" height="220"></canvas></div>
+      <div class="chart-card"><div class="card-title">MTX Conversion & DLC Attach</div><canvas id="ch-mtx-${g.id}" height="220"></canvas></div>
+    </div>
+
+    <!-- Retention -->
+    <div class="section-title" style="${accentCSS}">Retention Cohort Curves</div>
+    <div class="chart-grid g23">
+      <div class="chart-card"><div class="card-title">Retention by Day</div><canvas id="ch-ret-${g.id}" height="220"></canvas></div>
+      <div class="chart-card"><div class="card-title">D30 Benchmarks</div><canvas id="ch-retbar-${g.id}" height="220"></canvas></div>
+    </div>
+
+    <!-- Segments & Platform -->
+    <div class="section-title" style="${accentCSS}">Player Segments & Platform Split</div>
+    <div class="chart-grid g2">
+      <div class="chart-card"><div class="card-title">Casual / Core / Hardcore</div><div class="seg-bars">${segHTML}</div></div>
+      <div class="chart-card"><div class="card-title">Platform Distribution</div><canvas id="ch-plat-${g.id}" height="200"></canvas></div>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+// CHART RENDERING
+// ═══════════════════════════════════════════
+const chartInstances = {};
+
+function getCtx(id){
+  const el = document.getElementById(id);
+  return el ? el.getContext('2d') : null;
+}
+
+function destroyChart(id){
+  if(chartInstances[id]){chartInstances[id].destroy();delete chartInstances[id];}
+}
+
+function makeGrad(ctx, color, alpha1=.35, alpha2=.0){
+  const g=ctx.createLinearGradient(0,0,0,220);
+  g.addColorStop(0, color.replace(')',`,${alpha1})`).replace('rgb','rgba').replace('#',''));
+  // simple hex to rgba
+  const r=parseInt(color.slice(1,3),16),gr=parseInt(color.slice(3,5),16),b=parseInt(color.slice(5,7),16);
+  const g2=ctx.createLinearGradient(0,0,0,220);
+  g2.addColorStop(0,`rgba(${r},${gr},${b},${alpha1})`);
+  g2.addColorStop(1,`rgba(${r},${gr},${b},${alpha2})`);
+  return g2;
+}
+
+function hexToRgba(hex,a){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return `rgba(${r},${g},${b},${a})`;}
+
+function renderCharts(gameId){
+  const g = GAMES.find(x=>x.id===gameId);
+  if(!g) return;
+
+  // MAU/DAU
+  const mauId = 'ch-maudau-'+g.id;
+  destroyChart(mauId);
+  const mauCtx = getCtx(mauId);
+  if(mauCtx){
+    chartInstances[mauId] = new Chart(mauCtx,{
+      type:'line',
+      data:{
+        labels:MONTHS,
+        datasets:[
+          {label:'MAU (M)',data:g.mauTrend,borderColor:g.color,backgroundColor:makeGrad(mauCtx,g.color),fill:true},
+          {label:'DAU (M)',data:g.dauTrend,borderColor:hexToRgba(g.color,.55),borderDash:[4,3],fill:false}
+        ]
+      },
+      options:{responsive:true,maintainAspectRatio:false,plugins:{datalabels:{display:false},legend:{position:'top'}},scales:{y:{beginAtZero:false}}}
+    });
+  }
+
+  // Minutes
+  const minId = 'ch-min-'+g.id;
+  destroyChart(minId);
+  const minCtx = getCtx(minId);
+  if(minCtx){
+    chartInstances[minId] = new Chart(minCtx,{
+      type:'bar',
+      data:{labels:MONTHS,datasets:[{label:'Avg Min/Day',data:g.minTrend,backgroundColor:hexToRgba(g.color,.65),borderColor:g.color,borderWidth:1,borderRadius:4}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{datalabels:{display:false},legend:{display:false}},scales:{y:{beginAtZero:false}}}
+    });
+  }
+
+  // Revenue & ARPU
+  const revId = 'ch-rev-'+g.id;
+  destroyChart(revId);
+  const revCtx = getCtx(revId);
+  if(revCtx){
+    chartInstances[revId] = new Chart(revCtx,{
+      type:'bar',
+      data:{
+        labels:MONTHS,
+        datasets:[
+          {type:'bar',label:'Revenue ($M)',data:g.revTrend,backgroundColor:hexToRgba(g.color,.55),borderColor:g.color,borderWidth:1,borderRadius:4,yAxisID:'y'},
+          {type:'line',label:'ARPU ($)',data:g.arpu,borderColor:'#FFB900',backgroundColor:'transparent',yAxisID:'y1',borderWidth:2}
+        ]
+      },
+      options:{responsive:true,maintainAspectRatio:false,plugins:{datalabels:{display:false}},
+        scales:{y:{beginAtZero:false,position:'left'},y1:{beginAtZero:false,position:'right',grid:{drawOnChartArea:false}}}}
+    });
+  }
+
+  // MTX/DLC
+  const mtxId = 'ch-mtx-'+g.id;
+  destroyChart(mtxId);
+  const mtxCtx = getCtx(mtxId);
+  if(mtxCtx){
+    chartInstances[mtxId] = new Chart(mtxCtx,{
+      type:'line',
+      data:{
+        labels:MONTHS,
+        datasets:[
+          {label:'MTX Conv %',data:g.mtxConv,borderColor:'#FF8C00',backgroundColor:makeGrad(mtxCtx,'#FF8C00',.2,0),fill:true,yAxisID:'y'},
+          {label:'DLC Attach %',data:g.dlcAttach,borderColor:'#7B68EE',backgroundColor:'transparent',yAxisID:'y1'}
+        ]
+      },
+      options:{responsive:true,maintainAspectRatio:false,plugins:{datalabels:{display:false}},
+        scales:{y:{beginAtZero:false,position:'left'},y1:{beginAtZero:false,position:'right',grid:{drawOnChartArea:false}}}}
+    });
+  }
+
+  // Retention curve
+  const retId = 'ch-ret-'+g.id;
+  destroyChart(retId);
+  const retCtx = getCtx(retId);
+  if(retCtx){
+    const rc = g.retCurve;
+    // Generate smooth curve points
+    const days = [0,1,3,7,14,21,30];
+    const vals = [100,rc.d1,rc.d1-(rc.d1-rc.d7)*0.4,rc.d7,rc.d14,(rc.d14+rc.d30)/2,rc.d30];
+    chartInstances[retId] = new Chart(retCtx,{
+      type:'line',
+      data:{
+        labels:days.map(d=>'D'+d),
+        datasets:[
+          {label:'Current Cohort',data:vals,borderColor:g.color,backgroundColor:makeGrad(retCtx,g.color,.25,0),fill:true,pointRadius:3,pointBackgroundColor:g.color},
+          {label:'Prior Year',data:vals.map(v=>v-Math.random()*5-2),borderColor:hexToRgba(g.color,.4),borderDash:[5,3],fill:false,pointRadius:0}
+        ]
+      },
+      options:{responsive:true,maintainAspectRatio:false,plugins:{datalabels:{display:false}},scales:{y:{min:0,max:100,ticks:{callback:v=>v+'%'}}}}
+    });
+  }
+
+  // Retention bar benchmarks
+  const retBarId = 'ch-retbar-'+g.id;
+  destroyChart(retBarId);
+  const retBarCtx = getCtx(retBarId);
+  if(retBarCtx){
+    const rc=g.retCurve;
+    chartInstances[retBarId] = new Chart(retBarCtx,{
+      type:'bar',
+      data:{
+        labels:['D1','D7','D14','D30'],
+        datasets:[{data:[rc.d1,rc.d7,rc.d14,rc.d30],backgroundColor:[hexToRgba(g.color,.85),hexToRgba(g.color,.65),hexToRgba(g.color,.45),hexToRgba(g.color,.3)],borderRadius:6}]
+      },
+      options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},datalabels:{display:true,color:'#fff',anchor:'end',align:'start',offset:6,font:{weight:700,size:13},formatter:v=>v+'%'}},scales:{x:{max:100,ticks:{callback:v=>v+'%'}},y:{grid:{display:false}}}}
+    });
+  }
+
+  // Platform doughnut
+  const platId = 'ch-plat-'+g.id;
+  destroyChart(platId);
+  const platCtx = getCtx(platId);
+  if(platCtx){
+    chartInstances[platId] = new Chart(platCtx,{
+      type:'doughnut',
+      data:{
+        labels:['Console','PC','Cloud'],
+        datasets:[{data:[g.platform.console,g.platform.pc,g.platform.cloud],backgroundColor:[g.color,hexToRgba(g.color,.55),'#7B68EE'],borderColor:'#161B22',borderWidth:3}]
+      },
+      options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{position:'bottom'},datalabels:{display:true,color:'#fff',font:{weight:700,size:13},formatter:v=>v+'%'}}}
+    });
+  }
+}
+
+// Initial render
+renderCharts('all');
+</script>
+</body>
+</html>
