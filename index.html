@@ -82,7 +82,7 @@ margin-left:auto;text-transform:none;letter-spacing:0}
 /* ── KPI HERO TILES ── */
 .kg{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
 .kt{background:var(--card);border:1px solid var(--border);border-radius:10px;
-padding:16px 18px;position:relative;overflow:hidden}
+padding:16px 18px;position:relative}
 .kt::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
 background:var(--ac,var(--green))}
 .kt .kl{font-size:10px;font-weight:600;color:var(--sec);text-transform:uppercase;
@@ -262,7 +262,6 @@ const C={green:"#107C10",green2:"#10893E",lime:"#7FBA00",blue:"#0078D4",purple:"
 
 const SECTIONS=[
   {id:"exec",label:"Executive Summary",icon:"\u{1F4CA}",c:C.green},
-  {id:"goals",label:"Goals & Tracking",icon:"\u{1F3AF}",c:C.gold},
   {id:"growth",label:"Growth & Acquisition",icon:"\u{1F4C8}",c:C.blue},
   {id:"engage",label:"Engagement & Playtime",icon:"\u{1F3AE}",c:C.purple},
   {id:"monet",label:"Monetization & Revenue",icon:"\u{1F4B0}",c:C.gold},
@@ -621,14 +620,14 @@ function buildPanel(g){
   const kpis=[
     {l:"Monthly Active Users",v:g.mau,d:g.mauD,t:"Unique users with 1+ session in trailing 30 days"},
     {l:g.id==="gamepass"?"Subscribers":"Game Pass Subs",v:g.gpSubs,d:g.gpD,t:"Active GP subscribers"},
-    {l:"Revenue",v:g.rev,d:g.revD,t:"Total revenue from all streams"},
     {l:"Minutes Played",v:g.minP,d:g.minD,t:"Total minutes across all sessions"},
     {l:"DAU/MAU Stickiness",v:g.stick,d:g.stkD,t:"Daily active / Monthly active ratio"},
+    {l:"Revenue",v:g.rev,d:g.revD,t:"Total revenue from all streams"},
     {l:"Gross Margin",v:g.margin,d:g.mrgD,t:"Revenue minus COGS as % of revenue"},
-    {l:"M1 Retention",v:g.m1r,d:g.retD,t:"% of new users returning after 30 days"},
-    {l:"NPS",v:g.nps,d:g.npsD,t:"Net Promoter Score from latest survey"}
+    {l:"NPS",v:g.nps,d:g.npsD,t:"Net Promoter Score from latest survey"},
+    {l:"M1 Retention",v:g.m1r,d:g.retD,t:"% of new users returning after 30 days"}
   ];
-  const kC=[ac,ac,C.gold,C.purple,C.blue,g.margin.includes("-")?C.red:C.green,C.teal,C.lime];
+  const kC=[ac,ac,C.purple,C.blue,C.gold,g.margin.includes("-")?C.red:C.green,C.lime,C.teal];
 
   let h='';
   // ── EXEC SUMMARY ──
@@ -648,18 +647,17 @@ function buildPanel(g){
     h+='</ul></div>';
   }
 
-  // KPI Tiles (no sparkline canvas)
+  // KPI Panes (combined value + chart + goal)
   h+='<div class="kg">';
   kpis.forEach((k,i)=>{
     const dn=k.d.includes("-");
-    h+='<div class="kt" style="--ac:'+kC[i]+'"><div class="kl">'+k.l+' <i class="ii" data-tip="'+k.t+'">i</i></div><div class="kv">'+k.v+'</div><div class="kd '+(dn?"dn":"up")+'">'+(dn?"\u25BC":"\u25B2")+' '+k.d+'</div><div class="ks">vs prior year</div></div>';
-  });
-  h+='</div>';
-
-  // KPI Sparkline Charts (proper inline charts, 4 per row)
-  h+='<div class="cg g4" style="margin-bottom:14px">';
-  kpis.forEach((k,i)=>{
-    h+='<div class="cc"><div class="ct" style="font-size:10px">'+k.l+'</div><div class="cw" style="height:200px" id="kpi-'+g.id+'-'+i+'"></div></div>';
+    h+='<div class="kt" style="--ac:'+kC[i]+'">';
+    h+='<div class="kl">'+k.l+' <i class="ii" data-tip="'+k.t+'">i</i></div>';
+    h+='<div class="kv">'+k.v+'</div>';
+    h+='<div class="kd '+(dn?"dn":"up")+'">'+(dn?"\u25BC":"\u25B2")+' '+k.d+'</div>';
+    h+='<div class="ks">vs prior year</div>';
+    h+='<div style="height:140px;margin-top:8px" id="kpic-'+g.id+'-'+i+'"></div>';
+    h+='</div>';
   });
   h+='</div>';
 
@@ -678,31 +676,11 @@ function buildPanel(g){
     h+='</div></div>';
   }
 
-  // Play Frequency Distribution + Goals row
-  h+='<div class="cg g2">';
+  // Play Frequency Distribution
+  h+='<div class="cg g1">';
   h+='<div class="cc"><div class="ct">Play Frequency Distribution</div><div class="cs">% of MAU by days played per week</div><div class="cw" id="ch-'+g.id+'-playFreq"></div></div>';
-  if(g.goals){
-    h+='<div class="cc"><div class="ct">Goals vs Actuals</div><div class="cs">Progress against annual targets</div>';
-    g.goals.forEach(([lbl,actual,target])=>{
-      const pct=Math.min(100,Math.max(0,Math.abs(actual/target)*100)).toFixed(0);
-      const clr=pct>=95?C.green:pct>=85?C.gold:C.red;
-      h+='<div class="goal-row"><div class="goal-lbl">'+lbl+'</div><div class="goal-bar"><div class="goal-fill" style="width:'+pct+'%;background:'+clr+'"></div></div><div class="goal-val" style="color:'+clr+'">'+pct+'%</div></div>';
-    });
-    h+='</div>';
-  }
   h+='</div>';
   h+='</div>'; // close exec section
-
-  // ── GOALS & TRACKING ──
-  const allGoalLabels=["Total MAU","Game Pass Subscribers","Monthly Revenue","Total Minutes Played","DAU/MAU Stickiness","Gross Margin","M1 Retention","Cloud Gaming MAU"];
-  const goalCount=g.id==="all"?8:(g.goals?Math.min(g.goals.length,8):0);
-  h+='<div class="sec" id="s-'+g.id+'-goals"><div class="sec-t">\u{1F3AF} Goals & Tracking<span class="ill">(Illustrative Data)</span></div>';
-  h+='<div class="cg g4">';
-  for(let gi=0;gi<goalCount;gi++){
-    const gLabel=g.id==="all"?allGoalLabels[gi]:(g.goals[gi]?g.goals[gi][0]:"Goal "+(gi+1));
-    h+='<div class="cc"><div class="ct" style="font-size:10px">'+gLabel+'</div><div class="cw" style="height:200px" id="goal-'+g.id+'-'+gi+'"></div></div>';
-  }
-  h+='</div></div>';
 
   // ── GROWTH ──
   h+='<div class="sec" id="s-'+g.id+'-growth"><div class="sec-t">User Growth & Acquisition<span class="ill">(Illustrative Data)</span></div>';
@@ -1023,20 +1001,59 @@ function allPtLabel(suffix,decimals){
 function renderCharts(gid){
   const g=GAMES.find(x=>x.id===gid);if(!g)return;
   const showGP=g.id==="all"||g.id==="gamepass";
-  const kC=[g.color,g.color,C.gold,C.purple,C.blue,g.margin&&g.margin.includes("-")?C.red:C.green,C.teal,C.lime];
+  const kC=[g.color,g.color,C.purple,C.blue,C.gold,g.margin&&g.margin.includes("-")?C.red:C.green,C.lime,C.teal];
   const MA=["M","J","J","A","S","O","N","D","J","F","M","A"];
   const FYM=["May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar","Apr"];
 
-  // KPI Sparkline Charts (proper inline charts)
-  const spD=[g.mauTr,g.gpTr,g.revTr,g.minTr,g.stkTr,g.retTr,g.retTr,g.npsTr];
-  const spS=["M","","$M","B","%","%","%",""];
-  spD.forEach((d,i)=>{
-    const elId="kpi-"+gid+"-"+i;
-    const el=document.getElementById(elId);
-    if(!el||!d||d.every(v=>v===0))return;
-    mk(elId,{type:"line",data:{labels:MA,datasets:[{data:d,borderColor:kC[i],backgroundColor:kC[i]+"30",fill:"origin",borderWidth:2,tension:.35,pointRadius:2,pointHoverRadius:5}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:lastPtLabel(spS[i])},
-        scales:{x:{grid:{display:false},ticks:{font:{size:8}}},y:{grid:{color:"rgba(255,255,255,.04)"},ticks:{font:{size:8}}}}}});
+  // KPI Pane Charts (combined multi-year + goal line)
+  var kpiConfigs=[
+    {data:g.mauTr, suffix:'M', dec:0, target:null},
+    {data:g.gpTr, suffix:'M', dec:0, target:null},
+    {data:g.minTr, suffix:'B', dec:1, target:null},
+    {data:g.stkTr, suffix:'%', dec:1, target:null},
+    {data:g.revTr, suffix:'M', dec:0, target:null},
+    {data:null, suffix:'%', dec:1, target:null},
+    {data:g.npsTr, suffix:'', dec:0, target:null},
+    {data:g.retTr, suffix:'%', dec:1, target:null}
+  ];
+  if(g.id==="all"){
+    kpiConfigs[0].target=125; kpiConfigs[1].target=37;
+    kpiConfigs[2].target=16; kpiConfigs[3].target=44;
+    kpiConfigs[4].target=1900; kpiConfigs[5].target=-8;
+    kpiConfigs[6].target=75; kpiConfigs[7].target=70;
+    kpiConfigs[5].data=tr(-14,-12,12);
+  } else {
+    if(g.goals){
+      var gMap={};g.goals.forEach(function(gl){gMap[gl[0]]=gl[2];});
+      if(gMap["MAU"]!==undefined)kpiConfigs[0].target=gMap["MAU"];
+      if(gMap["Total Subs"]!==undefined)kpiConfigs[1].target=gMap["Total Subs"];
+      if(gMap["GP Subs"]!==undefined)kpiConfigs[1].target=gMap["GP Subs"];
+      if(gMap["NPS"]!==undefined)kpiConfigs[6].target=gMap["NPS"];
+      if(gMap["M1 Ret"]!==undefined)kpiConfigs[7].target=gMap["M1 Ret"];
+      if(gMap["Return Rate"]!==undefined)kpiConfigs[7].target=gMap["Return Rate"];
+    }
+    var mVal=parseFloat(g.margin);
+    if(!isNaN(mVal)){kpiConfigs[5].data=tr(mVal-4,mVal,12);kpiConfigs[5].target=mVal+4;}
+  }
+  kpiConfigs.forEach(function(cfg,i){
+    var d=cfg.data;
+    if(!d||d.every(function(v){return v===0;}))return;
+    var fy25=d.map(function(v){return +(v*(0.90+Math.random()*0.04)).toFixed(2);});
+    var fy24=d.map(function(v){return +(v*(0.78+Math.random()*0.04)).toFixed(2);});
+    var datasets=[
+      {label:"FY24",data:fy24,borderColor:"#484F58",borderWidth:1.5,pointRadius:0,fill:false,tension:.35},
+      {label:"FY25",data:fy25,borderColor:"#0078D4",borderWidth:2,pointRadius:1,fill:false,tension:.35},
+      {label:"FY26",data:d,borderColor:kC[i],borderWidth:2.5,pointRadius:3,pointHoverRadius:5,fill:false,tension:.35,
+       datalabels:lastPtLabel(cfg.suffix,cfg.dec)}
+    ];
+    if(cfg.target!==null){
+      datasets.push({label:"Goal",data:Array(12).fill(cfg.target),borderColor:"#FFB900",borderWidth:2,borderDash:[6,4],pointRadius:0,fill:false,tension:0});
+    }
+    mk("kpic-"+gid+"-"+i,{type:"line",data:{labels:MA,datasets:datasets},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},datalabels:{display:false}},
+        scales:{x:{grid:{display:false},ticks:{font:{size:7}}},
+                y:{grid:{color:"rgba(255,255,255,.04)"},ticks:{font:{size:7},maxTicksLimit:4}}}}});
   });
 
   // Play Frequency Distribution (stacked area)
@@ -1054,52 +1071,6 @@ function renderCharts(gid){
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{position:"top",labels:{font:{size:8}}},datalabels:{display:false}},
       scales:{y:{stacked:true,title:{display:true,text:"% of MAU"},max:100},x:{grid:{display:false}}}}});
-
-  // Goals & Tracking section charts
-  const goalMonths=["Nov","Dec","Jan","Feb","Mar","Apr"];
-  if(g.id==="all"){
-    const allGoals=[
-      {label:"Total MAU",target:125,data:tr(114,120,6),suffix:"M",dec:0},
-      {label:"GP Subscribers",target:37,data:tr(31,35,6),suffix:"M",dec:0},
-      {label:"Monthly Revenue",target:1.9,data:tr(1.62,1.8,6),suffix:"B",dec:2},
-      {label:"Minutes Played",target:16,data:tr(14,15,6),suffix:"B",dec:0},
-      {label:"DAU/MAU",target:44,data:tr(40,42,6),suffix:"%",dec:0},
-      {label:"Gross Margin",target:-8,data:tr(-14,-12,6),suffix:"%",dec:0},
-      {label:"M1 Retention",target:70,data:tr(64.8,68,6),suffix:"%",dec:0},
-      {label:"Cloud MAU",target:20,data:tr(14,18,6),suffix:"M",dec:0}
-    ];
-    allGoals.forEach((gl,gi)=>{
-      const colors=gl.data.map(v=>{
-        const diff=gl.target>=0?v/gl.target:gl.target/v;
-        if(gl.suffix==="%"&&gl.target<0){return v<=gl.target?C.green:v<=gl.target*1.05?C.gold:C.red;}
-        return diff>=1?C.green:diff>=0.95?C.gold:C.red;
-      });
-      mk("goal-"+gid+"-"+gi,{type:"bar",data:{labels:goalMonths,datasets:[{
-        label:gl.label,data:gl.data,backgroundColor:colors,borderRadius:4,barPercentage:.65}]},
-        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
-          datalabels:{display:true,anchor:'end',align:'top',offset:2,color:'#E6EDF3',font:{weight:'600',size:9},
-            formatter:function(v){return(gl.dec>0?v.toFixed(gl.dec):Math.round(v))+gl.suffix;}},
-          annotation:{annotations:{tgt:{type:"line",yMin:gl.target,yMax:gl.target,borderColor:C.gold,borderDash:[6,4],borderWidth:2,
-            label:{display:true,content:"Target: "+gl.target+gl.suffix,position:"start",font:{size:9},color:C.gold}}}}},
-          scales:{y:{grace:"15%"},x:{grid:{display:false}}}}});
-    });
-  } else if(g.goals){
-    g.goals.forEach(([lbl,actual,target],gi)=>{
-      const data=tr(actual*0.92,actual,6);
-      const suffix=lbl.includes("%")||lbl.includes("Margin")||lbl.includes("DAU")||lbl.includes("Ret")||lbl.includes("Churn")?"%":"";
-      const colors=data.map(v=>{
-        if(target<0){return v<=target?C.green:v<=target*1.05?C.gold:C.red;}
-        const r=v/target;return r>=1?C.green:r>=0.95?C.gold:C.red;
-      });
-      mk("goal-"+gid+"-"+gi,{type:"bar",data:{labels:goalMonths,datasets:[{
-        label:lbl,data:data,backgroundColor:colors,borderRadius:4,barPercentage:.65}]},
-        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
-          datalabels:barTopLabel(suffix,1),
-          annotation:{annotations:{tgt:{type:"line",yMin:target,yMax:target,borderColor:C.gold,borderDash:[6,4],borderWidth:2,
-            label:{display:true,content:"Target: "+target,position:"start",font:{size:9},color:C.gold}}}}},
-          scales:{y:{grace:"15%"},x:{grid:{display:false}}}}});
-    });
-  }
 
   // MAU by Platform (stacked area, data labels every other month + last)
   mk("ch-"+gid+"-mauPlat",{type:"line",data:{labels:M,datasets:[
