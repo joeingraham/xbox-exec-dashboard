@@ -1,258 +1,20 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Xbox Executive Dashboard</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
-<style>
-:root{--bg:#0D1117;--card:#161B22;--border:#21262D;--text:#E6EDF3;--sec:#8B949E;--dim:#484F58;
---green:#107C10;--green2:#10893E;--lime:#7FBA00;--blue:#0078D4;--purple:#7B68EE;--orange:#FF8C00;
---red:#E81123;--gold:#FFB900;--teal:#00B7C3;--cyan:#49CCF9;--pink:#FD71AF;
---sw:210px;--hh:54px;--th:44px}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;line-height:1.4}
-::-webkit-scrollbar{width:6px;height:6px}
-::-webkit-scrollbar-track{background:var(--bg)}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+// DOM mocks
+global.window = global;
+global.document = {
+  getElementById: () => null,
+  querySelectorAll: () => [],
+  querySelector: () => null,
+  createElement: () => ({appendChild:()=>{},querySelector:()=>null,getContext:()=>null,style:{}}),
+  title: 'test'
+};
+global.Chart = function(){this.chartArea={};this.canvas={};this.resize=()=>{};this.data={datasets:[]};this.options={};this.scales={};this.destroy=()=>{};};
+global.Chart.defaults = {color:'',borderColor:'',font:{family:'',size:10},plugins:{legend:{labels:{usePointStyle:true,pointStyleWidth:8,padding:12,font:{size:10}}},datalabels:{}},elements:{line:{tension:0,borderWidth:2},point:{radius:3,hoverRadius:6}},scale:{grid:{},ticks:{padding:6,font:{size:9}}}};
+global.Chart.register = function(){};
+global.ChartDataLabels = {};
+global.setTimeout = function(fn,ms){ try{fn();}catch(e){console.error('setTimeout ERROR:',e.message);} };
 
-/* ── HEADER ── */
-.hdr{position:fixed;top:0;left:0;right:0;height:var(--hh);background:rgba(13,17,23,.94);
-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;
-padding:0 20px;z-index:200;gap:14px}
-.hdr-logo{display:flex;align-items:center;gap:10px}
-.hdr-logo svg{width:28px;height:28px}
-.hdr-logo span{font-size:16px;font-weight:700;letter-spacing:-.3px}
-.hdr-logo .xg{color:var(--green)}
-.hdr-badge{background:var(--green);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;
-border-radius:10px;text-transform:uppercase;letter-spacing:.5px}
-.hdr-ill{font-size:11px;color:var(--dim);font-style:italic;margin-left:6px}
-.hdr-r{margin-left:auto;display:flex;align-items:center;gap:12px}
-.hdr-date{color:var(--sec);font-size:12px}
-.live{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pls 2s infinite}
-@keyframes pls{0%,100%{opacity:1}50%{opacity:.5}}
+try {
 
-/* ── SIDEBAR ── */
-.side{position:fixed;top:var(--hh);left:0;width:var(--sw);height:calc(100vh - var(--hh));
-background:var(--card);border-right:1px solid var(--border);overflow-y:auto;z-index:100;padding:10px 0}
-.side-lbl{padding:10px 14px 4px;font-size:10px;font-weight:700;color:var(--dim);
-text-transform:uppercase;letter-spacing:1px}
-.side-item{display:flex;align-items:center;gap:9px;padding:7px 14px;cursor:pointer;
-font-size:12px;font-weight:500;color:var(--sec);transition:all .15s;border-left:3px solid transparent}
-.side-item:hover{color:var(--text);background:rgba(255,255,255,.03)}
-.side-item.active{color:var(--lime);background:rgba(127,186,0,.06);
-border-left-color:var(--lime);font-weight:600}
-.side-item .dt{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-
-/* ── TAB BAR ── */
-.tbar{position:fixed;top:var(--hh);left:var(--sw);right:0;height:var(--th);
-background:rgba(13,17,23,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);
-display:flex;align-items:stretch;padding:0 16px;z-index:150;overflow-x:auto;scrollbar-width:none}
-.tbar::-webkit-scrollbar{display:none}
-.tbtn{display:flex;align-items:center;gap:7px;padding:0 16px;font-family:inherit;
-font-size:12px;font-weight:600;color:var(--sec);background:none;border:none;
-border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap;transition:all .2s}
-.tbtn:hover{color:var(--text);background:rgba(255,255,255,.03)}
-.tbtn.active{color:#fff;border-bottom-color:var(--tc,var(--green))}
-.tbtn .td{width:7px;height:7px;border-radius:50%;background:var(--tc,var(--green));
-opacity:.5;transition:opacity .2s}
-.tbtn.active .td{opacity:1;box-shadow:0 0 6px var(--tc,var(--green))}
-
-/* ── MAIN ── */
-.main{margin-left:var(--sw);margin-top:calc(var(--hh) + var(--th));
-padding:20px 24px 60px;min-height:calc(100vh - var(--hh) - var(--th))}
-.tpanel{display:none;animation:fi .3s ease}
-.tpanel.active{display:block}
-@keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
-
-/* ── SECTIONS ── */
-.sec{margin-bottom:28px;scroll-margin-top:calc(var(--hh) + var(--th) + 12px)}
-.sec-t{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;
-color:var(--sec);margin-bottom:12px;display:flex;align-items:center;gap:8px;
-padding-bottom:8px;border-bottom:1px solid var(--border)}
-.sec-t::before{content:'';width:3px;height:15px;border-radius:2px;background:var(--green)}
-.sec-t .ill{font-size:10px;font-weight:400;color:var(--dim);font-style:italic;
-margin-left:auto;text-transform:none;letter-spacing:0}
-
-/* ── KPI HERO TILES ── */
-.kg{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
-.kt{background:var(--card);border:1px solid var(--border);border-radius:10px;
-padding:16px 18px;position:relative}
-.kt::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
-background:var(--ac,var(--green))}
-.kt .kl{font-size:10px;font-weight:600;color:var(--sec);text-transform:uppercase;
-letter-spacing:.5px;margin-bottom:5px;display:flex;align-items:center;gap:5px}
-.kt .kv{font-size:26px;font-weight:800;letter-spacing:-1px;line-height:1.1;color:#fff}
-.kt .kd{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;
-margin-top:5px;padding:1px 6px;border-radius:4px}
-.kt .kd.up{color:#3fb950;background:rgba(63,185,80,.1)}
-.kt .kd.dn{color:var(--red);background:rgba(232,17,35,.1)}
-.kt .ks{font-size:10px;color:var(--dim);margin-top:3px}
-.kt .sp{position:absolute;bottom:0;right:0;width:90px;height:40px;opacity:.6}
-.ii{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;
-border-radius:50%;background:rgba(255,255,255,.07);font-size:8px;color:var(--dim);
-cursor:help;position:relative;font-style:normal}
-.ii:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;
-transform:translateX(-50%);background:#1c2128;color:var(--sec);font-size:10px;
-padding:6px 10px;border-radius:6px;white-space:normal;min-width:180px;max-width:260px;
-border:1px solid var(--border);z-index:300;font-weight:400;text-transform:none;
-letter-spacing:0;line-height:1.4;text-align:left}
-
-/* ── CHART CARDS ── */
-.cg{display:grid;gap:14px;margin-bottom:14px}
-.cg.g2{grid-template-columns:repeat(2,1fr)}
-.cg.g3{grid-template-columns:repeat(3,1fr)}
-.cg.g1{grid-template-columns:1fr}
-.cg.g4{grid-template-columns:repeat(4,1fr)}
-.cc{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px}
-.cc .ct{font-size:12px;font-weight:700;margin-bottom:2px;display:flex;align-items:center;gap:6px}
-.cc .cs{font-size:10px;color:var(--dim);margin-bottom:12px;font-style:italic}
-.cc .cw{position:relative;width:100%;height:240px}
-.cc .cw.tall{height:300px}
-.cc .cw.short{height:180px}
-.cc canvas{display:block;width:100%;height:100%}
-
-/* ── TABLES ── */
-.dt{width:100%;border-collapse:collapse;font-size:11px}
-.dt th{text-align:left;padding:8px 10px;color:var(--dim);font-weight:600;
-border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.5px}
-.dt td{padding:8px 10px;border-bottom:1px solid rgba(33,38,45,.5)}
-.dt tr:hover td{background:rgba(255,255,255,.02)}
-.pl{display:inline-block;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:600}
-.pl-g{background:rgba(16,124,16,.15);color:var(--lime)}
-.pl-r{background:rgba(232,17,35,.15);color:#ff6b6b}
-.pl-y{background:rgba(255,185,0,.15);color:var(--gold)}
-.pl-b{background:rgba(0,120,212,.15);color:var(--cyan)}
-.pl-p{background:rgba(123,104,238,.15);color:var(--purple)}
-.pb{height:6px;background:var(--border);border-radius:3px;overflow:hidden}
-.pf{height:100%;border-radius:3px;transition:width .6s}
-.hl td:first-child{font-weight:700;color:var(--green)}
-
-/* ── FUNNEL ── */
-.fnl{display:flex;align-items:center;gap:0;justify-content:center;padding:12px 0}
-.fnl-s{text-align:center;position:relative;flex:1;max-width:150px}
-.fnl-bar{margin:0 auto 8px;border-radius:8px;opacity:.85;transition:all .3s}
-.fnl-s .fv{font-size:17px;font-weight:800;color:#fff}
-.fnl-s .fl{font-size:9px;color:var(--sec);text-transform:uppercase;letter-spacing:.3px;margin-top:2px}
-.fnl-s .fp{font-size:10px;font-weight:700;margin-top:2px}
-.fnl-a{color:var(--dim);font-size:16px;margin:0 -2px;flex-shrink:0}
-
-/* ── QBR CARDS ── */
-.qbr{background:var(--card);border:1px solid var(--border);border-radius:10px;
-padding:16px;border-left:3px solid var(--green)}
-.qbr h4{font-size:12px;font-weight:700;margin-bottom:5px}
-.qbr p{font-size:11px;color:var(--sec);line-height:1.5}
-
-/* ── GOALS PROGRESS ── */
-.goal-row{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid rgba(33,38,45,.3)}
-.goal-row:last-child{border-bottom:none}
-.goal-lbl{width:120px;font-size:11px;font-weight:600;flex-shrink:0}
-.goal-bar{flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden}
-.goal-fill{height:100%;border-radius:4px;transition:width .6s}
-.goal-val{width:60px;text-align:right;font-size:11px;font-weight:600;flex-shrink:0}
-
-/* ── WATERFALL ── */
-.wf-row{display:flex;align-items:center;gap:10px;padding:6px 0}
-.wf-lbl{width:100px;font-size:10px;font-weight:600;text-align:right;flex-shrink:0;color:var(--sec)}
-.wf-bar-wrap{flex:1;height:24px;position:relative;display:flex;align-items:center}
-.wf-bar{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:6px;
-font-size:10px;font-weight:700;color:rgba(255,255,255,.9);min-width:30px}
-
-/* ── SEGMENT BARS ── */
-.seg-bars{display:flex;gap:10px;align-items:flex-end;justify-content:center;padding:16px 0 8px}
-.seg-col{text-align:center}
-.seg-col .bar{width:52px;border-radius:6px 6px 0 0;margin:0 auto 6px;min-height:8px;transition:height .4s}
-.seg-col .sp{font-size:13px;font-weight:700;color:#fff}
-.seg-col .sl{font-size:9px;color:var(--sec);text-transform:uppercase;margin-top:2px}
-
-/* ── RESPONSIVE ── */
-@media(max-width:1200px){.kg{grid-template-columns:repeat(2,1fr)}.cg.g3,.cg.g4{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:900px){.side{display:none}.main{margin-left:0}.tbar{left:0}
-.kg{grid-template-columns:1fr}.cg.g2,.cg.g3,.cg.g4{grid-template-columns:1fr}}
-.act-toggle{padding:2px 6px;font-size:9px;font-weight:600;cursor:pointer;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--sec)}
-.act-toggle:hover{border-color:var(--green2);color:var(--text)}
-.act-toggle.active{background:rgba(16,137,62,.15);border-color:var(--green2);color:#fff}
-</style>
-</head>
-<body>
-<!-- HEADER -->
-<div class="hdr">
-  <div class="hdr-logo">
-    <svg viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="13" stroke="#107C10" stroke-width="2"/>
-    <path d="M14 3C8 3 3 8 3 14s5 11 11 11 11-5 11-11S20 3 14 3zm-4 5.2c1-1 2.2-1.4 3.3-1.5-.7.5-1.4 1.2-2 2-1 1.4-1.7 2.9-2.2 4.4-.7-1.5-.8-3 .2-4.3.2-.2.4-.4.7-.6zm8 0c.3.2.5.4.7.6 1 1.3.9 2.8.2 4.3-.5-1.5-1.2-3-2.2-4.4-.6-.8-1.3-1.5-2-2 1.1.1 2.3.5 3.3 1.5zM14 22.5c-1.2 0-2.7-2-3.5-4-.7-1.7-1-3.5-.8-4.8.3.5.8 1.2 1.3 1.8 1 1.4 2.2 3 3 4.8.8-1.8 2-3.4 3-4.8.5-.6 1-1.3 1.3-1.8.2 1.3-.1 3.1-.8 4.8-.8 2-2.3 4-3.5 4z" fill="#107C10"/></svg>
-    <span><span class="xg">Xbox</span> Executive Dashboard</span>
-  </div>
-  <div class="hdr-badge">CONSOLIDATED</div>
-  <div class="hdr-ill">(Illustrative Data)</div>
-  <div class="hdr-r">
-    <span class="hdr-date" id="hDate"></span>
-    <div class="live" title="Live"></div>
-  </div>
-</div>
-
-<!-- SIDEBAR -->
-<nav class="side" id="sidebar"></nav>
-
-<!-- TAB BAR -->
-<div class="tbar" id="tabBar"></div>
-
-<!-- MAIN CONTENT -->
-<div class="main" id="mainContent"></div>
-
-<!-- FOOTER -->
-<footer style="margin-left:var(--sw);padding:32px 28px 48px;border-top:1px solid var(--border);margin-top:24px">
-<div style="max-width:1200px">
-<h3 style="font-size:14px;font-weight:700;margin-bottom:16px;color:var(--sec)">\U0001F4CB Methodology & Data Notes</h3>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:11px;color:var(--dim);line-height:1.6">
-<div>
-<p style="font-weight:600;color:var(--sec);margin-bottom:6px">Data Sources</p>
-<p>\u2022 MAU/DAU: Xbox Live telemetry (trailing 30/1 day active sessions)<br>
-\u2022 Revenue: Finance data warehouse, FX-adjusted to USD<br>
-\u2022 Engagement: PlayFab session events, 99th percentile outliers excluded<br>
-\u2022 Retention: Cohort-based, measured from first session timestamp<br>
-\u2022 NPS: Quarterly survey (n=50K+ per franchise, margin \u00b11.2pp)<br>
-\u2022 Competitive: Third-party estimates (Newzoo, Sensor Tower, SteamDB)</p>
-</div>
-<div>
-<p style="font-weight:600;color:var(--sec);margin-bottom:6px">Key Definitions</p>
-<p>\u2022 <strong>MAU</strong>: Unique users with \u22651 authenticated session in trailing 30 days<br>
-\u2022 <strong>DAU/MAU Stickiness</strong>: Daily active users \u00f7 Monthly active users<br>
-\u2022 <strong>M1 Retention</strong>: % of new users with \u22651 session in days 31\u201360<br>
-\u2022 <strong>ARPU</strong>: Average Revenue Per User (total rev \u00f7 MAU)<br>
-\u2022 <strong>ARPPU</strong>: Average Revenue Per Paying User<br>
-\u2022 <strong>Gross Margin</strong>: (Revenue \u2212 COGS) \u00f7 Revenue<br>
-\u2022 <strong>Cloud MAU</strong>: Users with \u22651 xCloud session in trailing 30 days</p>
-</div>
-</div>
-<div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:11px;color:var(--dim);line-height:1.6">
-<div>
-<p style="font-weight:600;color:var(--sec);margin-bottom:6px">Caveats & Limitations</p>
-<p>\u2022 All data is illustrative and for demonstration purposes only<br>
-\u2022 Competitive benchmarks use publicly available estimates<br>
-\u2022 Revenue figures include inter-company transfers<br>
-\u2022 Cloud gaming metrics exclude preview/beta participants<br>
-\u2022 Retention cohorts use intent-to-treat methodology</p>
-</div>
-<div>
-<p style="font-weight:600;color:var(--sec);margin-bottom:6px">Refresh Cadence</p>
-<p>\u2022 MAU/DAU/Engagement: Daily refresh, T+1 latency<br>
-\u2022 Revenue: Weekly refresh (Monday AM), T+3 latency<br>
-\u2022 NPS/Sentiment: Quarterly survey, ad-hoc pulse checks<br>
-\u2022 Competitive Intel: Monthly update from market research<br>
-\u2022 Experiments: Real-time status, weekly metric refresh</p>
-</div>
-</div>
-<p style="margin-top:24px;font-size:10px;color:var(--dim);text-align:center">
-Xbox Executive Dashboard v1.0 \u2022 Generated with illustrative data \u2022 \u00a9 2025 Microsoft Corporation \u2022 Internal Use Only \u2022 Confidential
-</p>
-</div>
-</footer>
-<script>
 
 // ═══════════════════════════════════════════════════════════════
 // DATA
@@ -693,19 +455,15 @@ function buildPanel(g){
 
   // ── GROWTH ──
   h+='<div class="sec" id="s-'+g.id+'-growth"><div class="sec-t">User Growth & Acquisition<span class="ill">(Illustrative Data)</span></div>';
-  h+='<div class="cg g2">';
+  h+='<div class="cg g4">';
   h+='<div class="cc"><div class="ct">MAU by Platform</div><div class="cs">Console, PC, Cloud stacked monthly</div><div class="cw" id="ch-'+g.id+'-mauPlat"></div></div>';
   h+='<div class="cc"><div class="ct">MAU Growth<span style="float:right;display:inline-flex;gap:4px"><button class="act-toggle active" onclick="switchGrowthView(\''+g.id+'\',\'type\')">by Type</button><button class="act-toggle" onclick="switchGrowthView(\''+g.id+'\',\'platform\')">by Platform</button></span></div><div class="cs">Activations, resurrections &amp; churn</div><div class="cw" id="ch-'+g.id+'-mauGrowth"></div></div>';
-  h+='</div>';
-  h+='<div class="cg g2" style="margin-top:12px">';
   h+='<div class="cc"><div class="ct">MAU by Usage Intensity<span style="float:right;display:inline-flex;gap:4px"><button class="act-toggle active" onclick="switchIntensity(\''+g.id+'\',\'games\')"># Games</button><button class="act-toggle" onclick="switchIntensity(\''+g.id+'\',\'platforms\')"># Platforms</button></span></div><div class="cs">Multi-game / platform engagement</div><div class="cw" id="ch-'+g.id+'-mauIntensity"></div></div>';
   h+='<div class="cc"><div class="ct">MAU by Cohort Tenure</div><div class="cs">User composition by tenure cohort</div><div class="cw" id="ch-'+g.id+'-mauTenure"></div></div>';
   h+='</div>';
-  h+='<div class="cg g2" style="margin-top:12px">';
+  h+='<div class="cg g4" style="margin-top:12px">';
   h+='<div class="cc"><div class="ct">Activations by Channel<span style="float:right;display:inline-flex;gap:4px"><button class="act-toggle active" onclick="switchActView(\''+g.id+'\',\'channel\')">by Channel</button><button class="act-toggle" onclick="switchActView(\''+g.id+'\',\'platform\')">by Platform</button></span></div><div class="cs">New user acquisition sources</div><div class="cw" id="ch-'+g.id+'-actChannel"></div></div>';
   h+='<div class="cc"><div class="ct">Resurrections by Churn<span style="float:right;display:inline-flex;gap:4px"><button class="act-toggle active" onclick="switchResView(\''+g.id+'\',\'duration\')">by Duration</button><button class="act-toggle" onclick="switchResView(\''+g.id+'\',\'platform\')">by Platform</button></span></div><div class="cs">Returned users by lapse length</div><div class="cw" id="ch-'+g.id+'-resByChurn"></div></div>';
-  h+='</div>';
-  h+='<div class="cg g2" style="margin-top:12px">';
   h+='<div class="cc"><div class="ct">Retention Milestones</div><div class="cs">M1, M3, M6, M12 retention rates</div><div class="cw" id="ch-'+g.id+'-retMile"></div></div>';
   h+='<div class="cc"><div class="ct">DAU/MAU Stickiness</div><div class="cs">Engagement ratio trend with target</div><div class="cw" id="ch-'+g.id+'-stkChart"></div></div>';
   h+='</div>';
@@ -960,10 +718,18 @@ window.addEventListener("scroll",()=>{
 const CI={};
 
 function mk(id,cfg){
-  var c=document.getElementById(id);if(!c)return null;
-  c.innerHTML='<canvas></canvas>';
+  var c=document.getElementById(id);if(!c){console.warn('MK NO CONTAINER:',id);return null;}
+  var w=c.clientWidth||c.offsetWidth||400;
+  var h=c.clientHeight||c.offsetHeight||240;
+  c.innerHTML='<canvas width="'+w+'" height="'+h+'"></canvas>';
   var cv=c.querySelector('canvas');
-  var ch=new Chart(cv,cfg);CI[id]=ch;return ch;
+  cfg.options=cfg.options||{};
+  cfg.options.responsive=false;
+  cfg.options.maintainAspectRatio=false;
+  try{var ch=new Chart(cv,cfg);CI[id]=ch;
+    if(!ch.chartArea.bottom)console.warn('MK NULL BOTTOM:',id,w+'x'+h);
+    return ch;
+  }catch(e){console.error('MK ERROR:',id,e.message,e.stack);return null;}
 }
 
 function aDS(l,d,c,f=true){return{label:l,data:d,borderColor:c,backgroundColor:f?c+"40":"transparent",fill:f?"origin":false,borderWidth:2.5,tension:.35};}
@@ -1133,6 +899,8 @@ function renderCharts(gid){
       plugins:{legend:{position:"top",labels:{font:{size:8}}},datalabels:{display:false}},
       scales:{y:{stacked:true,title:{display:true,text:"% of MAU"},max:100},x:{grid:{display:false}}}}});
 
+  // Growth charts — deferred to allow DOM layout
+  setTimeout(function(){
   // 1. MAU by Platform (stacked bar)
   mk("ch-"+gid+"-mauPlat",{type:"bar",data:{labels:M,datasets:[
     {...bDS("Console",g.mC,C.green),datalabels:stackedTopLabel('M')},
@@ -1185,6 +953,7 @@ function renderCharts(gid){
       annotation:{annotations:{tgt:{type:"line",yMin:stkTarget,yMax:stkTarget,borderColor:C.gold+"80",borderDash:[6,4],borderWidth:1,
         label:{display:true,content:"Target: "+stkTarget+"%",position:"start",font:{size:8},color:C.gold}}}}},
       scales:{y:{title:{display:true,text:"%"},ticks:{callback:function(v){return v+'%';}}},x:{grid:{display:false}}}}});
+  },200); // end growth setTimeout
 
   // Minutes per Day (3-year view)
   const fy24mpd=tr(g.mpd[0]*0.78,g.mpd[11]*0.82);
@@ -1527,11 +1296,21 @@ function renderResByPlatform(gid,g){
     scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:'Resurrections (M)'}}}}});
 }
 
-// Initial render — use requestAnimationFrame to ensure DOM is laid out
+// Initial render
 rendered.add("all");
-requestAnimationFrame(function(){
-  setTimeout(function(){ renderCharts("all"); }, 50);
-});
-</script>
-</body>
-</html>
+setTimeout(()=>{
+  try{
+    renderCharts("all");
+  }catch(e){
+    console.error('renderCharts CRASHED:',e.message,e.stack);
+    document.title='ERROR:'+e.message;
+  }
+  setTimeout(()=>{
+    Object.keys(CI).forEach(k=>{if(CI[k]&&CI[k].resize)CI[k].resize();});
+  },500);
+},100);
+
+} catch(e) {
+  console.error('TOP LEVEL ERROR:', e.message);
+  console.error('Stack:', e.stack.split('\n').slice(0,5).join('\n'));
+}
