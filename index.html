@@ -629,6 +629,23 @@ function buildPanel(g){
   ];
   const kC=[ac,ac,C.purple,C.blue,C.gold,g.margin.includes("-")?C.red:C.green,C.lime,C.teal];
 
+  // Goal values and labels for KPI panes
+  var kpiGoals, kpiGoalLabels;
+  if(g.id==="all"){
+    kpiGoals=[125,37,16,44,1900,-8,75,70];
+    kpiGoalLabels=["125M","37M","16B","44%","$1.9B","-8%","75","70%"];
+  } else if(g.id==="gamepass"){
+    kpiGoals=[37,37,null,null,570,null,null,70];
+    kpiGoalLabels=["37M","37M","","","$570M","","","70%"];
+  } else {
+    kpiGoals=[null,null,null,null,null,null,null,null];
+    kpiGoalLabels=["","","","","","","",""];
+    if(g.goals){g.goals.forEach(function(gl){
+      if(gl[0]==="MAU"){kpiGoals[0]=gl[2];kpiGoalLabels[0]=gl[2]+"M";}
+      if(gl[0]==="NPS"){kpiGoals[6]=gl[2];kpiGoalLabels[6]=String(gl[2]);}
+    });}
+  }
+
   let h='';
   // ── EXEC SUMMARY ──
   h+='<div class="sec" id="s-'+g.id+'-exec"><div class="sec-t">Executive Summary<span class="ill">(Illustrative Data)</span></div>';
@@ -648,11 +665,19 @@ function buildPanel(g){
   }
 
   // KPI Panes (combined value + chart + goal)
+  // Shared legend above the grid
+  h+='<div style="display:flex;gap:16px;margin-bottom:8px;font-size:10px;font-weight:600;color:var(--sec);align-items:center">';
+  h+='<span style="display:flex;align-items:center;gap:4px"><span style="width:20px;height:2px;background:#484F58;display:inline-block"></span> 2 Years Ago</span>';
+  h+='<span style="display:flex;align-items:center;gap:4px"><span style="width:20px;height:2px;background:#0078D4;display:inline-block"></span> Prior Year</span>';
+  h+='<span style="display:flex;align-items:center;gap:4px"><span style="width:20px;height:2.5px;background:#10893E;display:inline-block"></span> Current Year</span>';
+  h+='<span style="display:flex;align-items:center;gap:4px"><span style="width:20px;height:2px;background:#FFB900;display:inline-block;border-top:2px dashed #FFB900;height:0"></span> Goal</span>';
+  h+='</div>';
   h+='<div class="kg">';
   kpis.forEach((k,i)=>{
     const dn=k.d.includes("-");
+    const goalTxt=kpiGoals[i]!==null?' (Goal: '+kpiGoalLabels[i]+')':'';
     h+='<div class="kt" style="--ac:'+kC[i]+'">';
-    h+='<div class="kl">'+k.l+' <i class="ii" data-tip="'+k.t+'">i</i></div>';
+    h+='<div class="kl">'+k.l+goalTxt+'</div>';
     h+='<div class="kv">'+k.v+'</div>';
     h+='<div class="kd '+(dn?"dn":"up")+'">'+(dn?"\u25BC":"\u25B2")+' '+k.d+'</div>';
     h+='<div class="ks">vs prior year</div>';
@@ -1005,7 +1030,8 @@ function renderCharts(gid){
   const MA=["M","J","J","A","S","O","N","D","J","F","M","A"];
   const FYM=["May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar","Apr"];
 
-  // KPI Pane Charts (combined multi-year + goal line)
+  // KPI Pane Charts — Jan-Dec calendar year, 3 years + goal
+  var CY_LABELS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   var kpiConfigs=[
     {data:g.mauTr, suffix:'M', dec:0, target:null},
     {data:g.gpTr, suffix:'M', dec:0, target:null},
@@ -1035,21 +1061,52 @@ function renderCharts(gid){
     var mVal=parseFloat(g.margin);
     if(!isNaN(mVal)){kpiConfigs[5].data=tr(mVal-4,mVal,12);kpiConfigs[5].target=mVal+4;}
   }
+
+  // Rearrange 12 months of data from fiscal (May-Apr) to calendar (Jan-Dec)
+  // Fiscal index 0=May, so calendar Jan=index 8, Feb=9, Mar=10, Apr=11, May=0, Jun=1...
+  function fiscalToCal(arr){
+    if(!arr||arr.length<12)return arr;
+    return [arr[8],arr[9],arr[10],arr[11],arr[0],arr[1],arr[2],arr[3],arr[4],arr[5],arr[6],arr[7]];
+  }
+
+  var CY_GREEN="#10893E";
   kpiConfigs.forEach(function(cfg,i){
     var d=cfg.data;
     if(!d||d.every(function(v){return v===0;}))return;
-    var fy25=d.map(function(v){return +(v*(0.90+Math.random()*0.04)).toFixed(2);});
-    var fy24=d.map(function(v){return +(v*(0.78+Math.random()*0.04)).toFixed(2);});
+
+    // Convert to calendar year order
+    var calData=fiscalToCal(d);
+
+    // FY26 actual = Jan-Apr (indices 0-3), rest null
+    var fy26Actual=calData.map(function(v,idx){return idx<=3?v:null;});
+    // FY26 forecast = Apr value through Dec at goal level (dotted)
+    var goalVal=cfg.target!==null?cfg.target:calData[3];
+    var fy26Forecast=calData.map(function(v,idx){
+      if(idx===3)return calData[3]; // junction point
+      if(idx>3)return goalVal;
+      return null;
+    });
+
+    // Prior years: scale down from calendar data
+    var fy25=calData.map(function(v){return +(v*(0.90+Math.random()*0.03)).toFixed(2);});
+    var fy24=calData.map(function(v){return +(v*(0.78+Math.random()*0.03)).toFixed(2);});
+
+    // All-point data label for FY26 actual
+    var fy26Labels={
+      display:function(ctx){return ctx.dataset.data[ctx.dataIndex]!==null;},
+      anchor:'end',align:'top',offset:3,
+      color:CY_GREEN,font:{weight:'bold',size:8},
+      formatter:function(v){if(v===null)return'';return(cfg.dec>0?v.toFixed(cfg.dec):Math.round(v))+cfg.suffix;}
+    };
+
     var datasets=[
-      {label:"FY24",data:fy24,borderColor:"#484F58",borderWidth:1.5,pointRadius:0,fill:false,tension:.35},
-      {label:"FY25",data:fy25,borderColor:"#0078D4",borderWidth:2,pointRadius:1,fill:false,tension:.35},
-      {label:"FY26",data:d,borderColor:kC[i],borderWidth:2.5,pointRadius:3,pointHoverRadius:5,fill:false,tension:.35,
-       datalabels:lastPtLabel(cfg.suffix,cfg.dec)}
+      {label:"2 Yrs Ago",data:fy24,borderColor:"#484F58",borderWidth:1.5,pointRadius:0,fill:false,tension:.35},
+      {label:"Prior Year",data:fy25,borderColor:"#0078D4",borderWidth:2,pointRadius:1,fill:false,tension:.35},
+      {label:"Current Year",data:fy26Actual,borderColor:CY_GREEN,borderWidth:2.5,pointRadius:3,pointHoverRadius:5,fill:false,tension:.35,spanGaps:false,datalabels:fy26Labels},
+      {label:"Forecast/Goal",data:fy26Forecast,borderColor:"#FFB900",borderWidth:2,borderDash:[6,4],pointRadius:0,fill:false,tension:.2,spanGaps:false}
     ];
-    if(cfg.target!==null){
-      datasets.push({label:"Goal",data:Array(12).fill(cfg.target),borderColor:"#FFB900",borderWidth:2,borderDash:[6,4],pointRadius:0,fill:false,tension:0});
-    }
-    mk("kpic-"+gid+"-"+i,{type:"line",data:{labels:MA,datasets:datasets},
+
+    mk("kpic-"+gid+"-"+i,{type:"line",data:{labels:CY_LABELS,datasets:datasets},
       options:{responsive:true,maintainAspectRatio:false,
         plugins:{legend:{display:false},datalabels:{display:false}},
         scales:{x:{grid:{display:false},ticks:{font:{size:7}}},
