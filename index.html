@@ -115,7 +115,7 @@ letter-spacing:0;line-height:1.4;text-align:left}
 .cc .cw{position:relative;width:100%;height:240px}
 .cc .cw.tall{height:300px}
 .cc .cw.short{height:180px}
-.cc canvas{display:block;width:100%;height:100%}
+.cc canvas{display:block;width:100%}
 
 /* ── TABLES ── */
 .dt{width:100%;border-collapse:collapse;font-size:11px}
@@ -582,6 +582,77 @@ Chart.defaults.scale.ticks={padding:6,font:{size:9}};
 if(typeof ChartDataLabels!=='undefined'){Chart.register(ChartDataLabels);}
 Chart.defaults.plugins.datalabels={display:false};
 
+// ── CfI-style helper: hex to rgba ──
+function a(hex,alpha){var r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return 'rgba('+r+','+g+','+b+','+alpha+')';}
+
+// ── CfI-style stacked datalabels (inside each bar segment) ──
+function stackedDatalabels(fmtFn,minPct){
+  return{
+    display:function(ctx){
+      if(ctx.dataset.type==='line')return false;
+      var meta=ctx.chart.getDatasetMeta(ctx.datasetIndex);
+      if(meta.hidden)return false;
+      var ds=ctx.chart.data.datasets.filter(function(d,di){return d.type!=='line'&&!ctx.chart.getDatasetMeta(di).hidden;});
+      var total=ds.reduce(function(s,d){return s+(Math.abs(d.data[ctx.dataIndex])||0);},0);
+      var val=Math.abs(ctx.dataset.data[ctx.dataIndex]||0);
+      return total>0&&(val/total)>=(minPct||0.05);
+    },
+    font:{size:9,weight:'bold'},
+    color:'#ffffffdd',
+    formatter:fmtFn||function(v){return Math.abs(v);},
+    anchor:'center',
+    align:'center'
+  };
+}
+
+// ── CfI-style stacked total plugin (total above each stacked bar) ──
+const stackedTotalPlugin={
+  id:'stackedTotal',
+  afterDatasetsDraw(chart){
+    if(!chart.config.options.plugins?.stackedTotal?.display)return;
+    const{ctx}=chart;
+    const meta0=chart.getDatasetMeta(0);
+    if(!meta0||meta0.type!=='bar')return;
+    const fmt=chart.config.options.plugins.stackedTotal.formatter||(v=>v);
+    const datasets=chart.data.datasets.filter(ds=>ds.type!=='line');
+    for(let i=0;i<chart.data.labels.length;i++){
+      let total=0;let topY=Infinity;
+      datasets.forEach((ds,di)=>{
+        const meta=chart.getDatasetMeta(di);
+        if(meta.hidden||meta.type==='line')return;
+        const val=ds.data[i]||0;
+        if(val>0)total+=val;
+        const bar=meta.data[i];
+        if(bar&&bar.y<topY&&val>0)topY=bar.y;
+      });
+      if(total>0&&topY<Infinity){
+        ctx.save();ctx.fillStyle='#E6EDF3';
+        ctx.font='bold 7px Inter, system-ui';ctx.textAlign='center';
+        ctx.fillText(fmt(total),meta0.data[i].x,topY-6);
+        ctx.restore();
+      }
+    }
+  }
+};
+// stackedTotalPlugin disabled — causes stack overflow with ChartDataLabels
+// Chart.register(stackedTotalPlugin);
+
+// ── Helper to reset a canvas for toggle functions ──
+function resetCanvas(id){
+  var old=document.getElementById(id);
+  if(!old)return null;
+  if(CI[id]){CI[id].destroy();delete CI[id];}
+  if(old.tagName==='CANVAS'){
+    var nw=document.createElement('canvas');
+    nw.id=id;
+    old.replaceWith(nw);
+    return nw;
+  }else{
+    old.innerHTML='';
+    return old;
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════
 // BUILD UI
 // ═══════════════════════════════════════════════════════════════
@@ -692,22 +763,18 @@ function buildPanel(g){
   h+='</div>'; // close exec section
 
   // ── GROWTH ──
-  h+='<div class="sec" id="s-'+g.id+'-growth"><div class="sec-t">User Growth & Acquisition<span class="ill">(Illustrative Data)</span></div>';
-  h+='<div class="cg g2">';
-  h+='<div class="cc"><div class="ct">MAU by Platform</div><div class="cs">Console, PC, Cloud stacked monthly</div><div class="cw" id="ch-'+g.id+'-mauPlat"></div></div>';
-  h+='<div class="cc"><div class="ct">MAU Growth<span style="float:right;display:inline-flex;gap:4px"><button class="act-toggle active" onclick="switchGrowthView(\''+g.id+'\',\'type\')">by Type</button><button class="act-toggle" onclick="switchGrowthView(\''+g.id+'\',\'platform\')">by Platform</button></span></div><div class="cs">Activations, resurrections &amp; churn</div><div class="cw" id="ch-'+g.id+'-mauGrowth"></div></div>';
+  h+='<div class="sec" id="s-'+g.id+'-growth"><div class="sec-t">User Growth &amp; Acquisition<span class="ill">(Illustrative Data)</span></div>';
+  h+='<div class="cg g4">';
+  h+='<div class="cc"><div class="ct">MAU by Platform</div><div class="cw short" id="ch-'+g.id+'-mauPlat"></div></div>';
+  h+='<div class="cc"><div class="ct">MAU Growth<span style="float:right;display:inline-flex;gap:4px"><button class="act-toggle active" onclick="switchGrowthView(\''+g.id+'\',\'type\')">by Type</button><button class="act-toggle" onclick="switchGrowthView(\''+g.id+'\',\'platform\')">by Platform</button></span></div><div class="cw short" id="ch-'+g.id+'-mauGrowth"></div></div>';
+  h+='<div class="cc"><div class="ct">MAU by Usage Intensity<span style="float:right;display:inline-flex;gap:4px"><button class="act-toggle active" onclick="switchIntensity(\''+g.id+'\',\'games\')"># Games</button><button class="act-toggle" onclick="switchIntensity(\''+g.id+'\',\'platforms\')"># Platforms</button></span></div><div class="cw short" id="ch-'+g.id+'-mauIntensity"></div></div>';
+  h+='<div class="cc"><div class="ct">MAU by Cohort Tenure</div><div class="cw short" id="ch-'+g.id+'-mauTenure"></div></div>';
   h+='</div>';
-  h+='<div class="cg g2" style="margin-top:12px">';
-  h+='<div class="cc"><div class="ct">MAU by Usage Intensity<span style="float:right;display:inline-flex;gap:4px"><button class="act-toggle active" onclick="switchIntensity(\''+g.id+'\',\'games\')"># Games</button><button class="act-toggle" onclick="switchIntensity(\''+g.id+'\',\'platforms\')"># Platforms</button></span></div><div class="cs">Multi-game / platform engagement</div><div class="cw" id="ch-'+g.id+'-mauIntensity"></div></div>';
-  h+='<div class="cc"><div class="ct">MAU by Cohort Tenure</div><div class="cs">User composition by tenure cohort</div><div class="cw" id="ch-'+g.id+'-mauTenure"></div></div>';
-  h+='</div>';
-  h+='<div class="cg g2" style="margin-top:12px">';
-  h+='<div class="cc"><div class="ct">Activations by Channel<span style="float:right;display:inline-flex;gap:4px"><button class="act-toggle active" onclick="switchActView(\''+g.id+'\',\'channel\')">by Channel</button><button class="act-toggle" onclick="switchActView(\''+g.id+'\',\'platform\')">by Platform</button></span></div><div class="cs">New user acquisition sources</div><div class="cw" id="ch-'+g.id+'-actChannel"></div></div>';
-  h+='<div class="cc"><div class="ct">Resurrections by Churn<span style="float:right;display:inline-flex;gap:4px"><button class="act-toggle active" onclick="switchResView(\''+g.id+'\',\'duration\')">by Duration</button><button class="act-toggle" onclick="switchResView(\''+g.id+'\',\'platform\')">by Platform</button></span></div><div class="cs">Returned users by lapse length</div><div class="cw" id="ch-'+g.id+'-resByChurn"></div></div>';
-  h+='</div>';
-  h+='<div class="cg g2" style="margin-top:12px">';
-  h+='<div class="cc"><div class="ct">Retention Milestones</div><div class="cs">M1, M3, M6, M12 retention rates</div><div class="cw" id="ch-'+g.id+'-retMile"></div></div>';
-  h+='<div class="cc"><div class="ct">DAU/MAU Stickiness</div><div class="cs">Engagement ratio trend with target</div><div class="cw" id="ch-'+g.id+'-stkChart"></div></div>';
+  h+='<div class="cg g4" style="margin-top:12px">';
+  h+='<div class="cc"><div class="ct">Activations by Channel<span style="float:right;display:inline-flex;gap:4px"><button class="act-toggle active" onclick="switchActView(\''+g.id+'\',\'channel\')">by Channel</button><button class="act-toggle" onclick="switchActView(\''+g.id+'\',\'platform\')">by Platform</button></span></div><div class="cw short" id="ch-'+g.id+'-actChannel"></div></div>';
+  h+='<div class="cc"><div class="ct">Resurrections by Churn<span style="float:right;display:inline-flex;gap:4px"><button class="act-toggle active" onclick="switchResView(\''+g.id+'\',\'duration\')">by Duration</button><button class="act-toggle" onclick="switchResView(\''+g.id+'\',\'platform\')">by Platform</button></span></div><div class="cw short" id="ch-'+g.id+'-resByChurn"></div></div>';
+  h+='<div class="cc"><div class="ct">Retention Milestones</div><div class="cw short" id="ch-'+g.id+'-retMile"></div></div>';
+  h+='<div class="cc"><div class="ct">DAU/MAU Stickiness</div><div class="cw short" id="ch-'+g.id+'-stkChart"></div></div>';
   h+='</div>';
   h+='</div>';
 
@@ -926,7 +993,7 @@ function switchTab(id){
   document.querySelectorAll(".tpanel").forEach(p=>p.classList.toggle("active",p.id==="panel-"+id));
   document.querySelectorAll(".side-item").forEach(s=>s.classList.remove("active"));
   const f=document.querySelector(".side-item");if(f)f.classList.add("active");
-  if(!rendered.has(id)){rendered.add(id);setTimeout(()=>renderCharts(id),80);}
+  if(!rendered.has(id)){rendered.add(id);requestAnimationFrame(function(){requestAnimationFrame(function(){renderCharts(id);});});}
   window.scrollTo({top:0,behavior:"smooth"});
 }
 
@@ -961,9 +1028,10 @@ const CI={};
 
 function mk(id,cfg){
   var c=document.getElementById(id);if(!c)return null;
-  c.innerHTML='<canvas></canvas>';
-  var cv=c.querySelector('canvas');
-  var ch=new Chart(cv,cfg);CI[id]=ch;return ch;
+  var cv;
+  if(c.tagName==='CANVAS'){cv=c;}
+  else{c.innerHTML='<canvas></canvas>';cv=c.querySelector('canvas');}
+  try{var ch=new Chart(cv,cfg);CI[id]=ch;return ch;}catch(e){console.error('CHART FAIL:',id,e.message);return null;}
 }
 
 function aDS(l,d,c,f=true){return{label:l,data:d,borderColor:c,backgroundColor:f?c+"40":"transparent",fill:f?"origin":false,borderWidth:2.5,tension:.35};}
@@ -1016,6 +1084,22 @@ function allPtLabel(suffix,decimals){
     font:{weight:'bold',size:9},
     formatter:function(v){if(v===null||v===undefined)return'';return(typeof v==='number'?v.toFixed(decimals):v)+suffix;}};
 }
+
+// Global chart options for CfI-style compact growth charts
+var cfiOpts=function(extra){
+  var o={plugins:{legend:{display:false},
+    datalabels:{display:false},
+    stackedTotal:{display:false}},
+    scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:7},maxRotation:0}},
+      y:{stacked:true,ticks:{font:{size:7},maxTicksLimit:4},grid:{color:'rgba(255,255,255,.04)'}}},
+    responsive:true,maintainAspectRatio:false};
+  if(extra)Object.keys(extra).forEach(function(k){
+    if(k==='scales'&&o.scales){Object.keys(extra.scales).forEach(function(sk){o.scales[sk]=extra.scales[sk];});}
+    else if(k==='plugins'&&o.plugins){Object.keys(extra.plugins).forEach(function(pk){o.plugins[pk]=extra.plugins[pk];});}
+    else{o[k]=extra[k];}
+  });
+  return o;
+};
 
 function renderCharts(gid){
   const g=GAMES.find(x=>x.id===gid);if(!g)return;
@@ -1133,13 +1217,13 @@ function renderCharts(gid){
       plugins:{legend:{position:"top",labels:{font:{size:8}}},datalabels:{display:false}},
       scales:{y:{stacked:true,title:{display:true,text:"% of MAU"},max:100},x:{grid:{display:false}}}}});
 
+  // ── CfI-STYLE GROWTH CHARTS (responsive:true,maintainAspectRatio:false, no maintainAspectRatio:false) ──
   // 1. MAU by Platform (stacked bar)
-  mk("ch-"+gid+"-mauPlat",{type:"bar",data:{labels:M,datasets:[
-    {...bDS("Console",g.mC,C.green),datalabels:stackedTopLabel('M')},
-    {...bDS("PC",g.mP,C.blue),datalabels:stackedTopLabel('M')},
-    {...bDS("Cloud",g.mCl,C.purple),datalabels:stackedTopLabel('M')}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top"},datalabels:{display:false}},
-      scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:"MAU (M)"}}}}});
+  mk("ch-"+gid+"-mauPlat",{type:'bar',data:{labels:M,datasets:[
+    {label:'Console',data:g.mC,backgroundColor:a(C.green,0.7),borderRadius:2,stack:'s'},
+    {label:'PC',data:g.mP,backgroundColor:a(C.blue,0.7),borderRadius:2,stack:'s'},
+    {label:'Cloud',data:g.mCl,backgroundColor:a(C.purple,0.7),borderRadius:2,stack:'s'}
+  ]},options:cfiOpts()});
 
   // 2. MAU Growth waterfall (default: by type)
   renderGrowthByType(gid,g);
@@ -1153,13 +1237,12 @@ function renderCharts(gid){
   var t3_12=tenureTotal.map(function(v){return +(v*0.25).toFixed(2);});
   var t1_3=tenureTotal.map(function(v){return +(v*0.10).toFixed(2);});
   var tNew=tenureTotal.map(function(v){return +(v*0.05).toFixed(2);});
-  mk("ch-"+gid+"-mauTenure",{type:"line",data:{labels:M,datasets:[
-    {...aDS("12+ months",t12p,"#484F58"),datalabels:{display:false}},
-    {...aDS("3-12 months",t3_12,C.blue),datalabels:{display:false}},
-    {...aDS("1-3 months",t1_3,C.teal),datalabels:{display:false}},
-    {...aDS("New (Activation mo)",tNew,C.lime),datalabels:lastPtLabel('M')}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top",labels:{font:{size:8}}},datalabels:{display:false}},
-      scales:{y:{stacked:true,title:{display:true,text:"MAU (M)"}},x:{grid:{display:false}}}}});
+  mk("ch-"+gid+"-mauTenure",{type:'line',data:{labels:M,datasets:[
+    {label:'12+ months',data:t12p,borderColor:'#484F58',backgroundColor:a('#484F58',0.5),borderWidth:1.5,pointRadius:1,tension:.3,fill:true},
+    {label:'3-12 months',data:t3_12,borderColor:C.blue,backgroundColor:a(C.blue,0.5),borderWidth:1.5,pointRadius:1,tension:.3,fill:true},
+    {label:'1-3 months',data:t1_3,borderColor:C.teal,backgroundColor:a(C.teal,0.5),borderWidth:1.5,pointRadius:1,tension:.3,fill:true},
+    {label:'New (<1 mo)',data:tNew,borderColor:C.lime,backgroundColor:a(C.lime,0.5),borderWidth:1.5,pointRadius:1,tension:.3,fill:true}
+  ]},options:cfiOpts({scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:7},maxRotation:0}},y:{stacked:true,ticks:{font:{size:7},maxTicksLimit:4},grid:{color:'rgba(255,255,255,.04)'}}}})});
 
   // 5. Activations by Channel (default: by channel)
   renderActByChannel(gid,g);
@@ -1169,22 +1252,18 @@ function renderCharts(gid){
 
   // 7. Retention Milestones
   var m12Ret=g.cM6.map(function(v){return +(v*0.7).toFixed(1);});
-  mk("ch-"+gid+"-retMile",{type:"line",data:{labels:M,datasets:[
-    {...lDS("M1",g.cM1,C.green),datalabels:lastPtLabel('%')},
-    {...lDS("M3",g.cM3,C.blue),datalabels:lastPtLabel('%')},
-    {...lDS("M6",g.cM6,C.purple),datalabels:lastPtLabel('%')},
-    {...lDS("M12",m12Ret,C.orange),datalabels:lastPtLabel('%')}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top",labels:{font:{size:8}}},datalabels:{display:false}},
-      scales:{y:{title:{display:true,text:"%"},min:0,max:100,ticks:{callback:function(v){return v+'%';}}},x:{grid:{display:false}}}}});
+  mk("ch-"+gid+"-retMile",{type:'line',data:{labels:M,datasets:[
+    {label:'M1',data:g.cM1,borderColor:C.purple,borderWidth:2,tension:.3,fill:false,pointRadius:1},
+    {label:'M3',data:g.cM3,borderColor:C.blue,borderWidth:1.5,tension:.3,fill:false,pointRadius:1},
+    {label:'M6',data:g.cM6,borderColor:C.teal,borderWidth:1.5,tension:.3,fill:false,pointRadius:1},
+    {label:'M12',data:m12Ret,borderColor:C.orange,borderWidth:1.5,tension:.3,fill:false,pointRadius:1,borderDash:[4,3]}
+  ]},options:cfiOpts({scales:{y:{stacked:false,min:0,max:100}}})});
 
-  // 8. DAU/MAU Stickiness
-  var stkTarget=gid==='all'?45:gid==='gamepass'?50:40;
-  mk("ch-"+gid+"-stkChart",{type:"line",data:{labels:M,datasets:[
-    {...lDS("DAU/MAU %",g.stkTr,C.cyan),fill:true,backgroundColor:C.cyan+"30",datalabels:allPtLabel('%')}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:false},
-      annotation:{annotations:{tgt:{type:"line",yMin:stkTarget,yMax:stkTarget,borderColor:C.gold+"80",borderDash:[6,4],borderWidth:1,
-        label:{display:true,content:"Target: "+stkTarget+"%",position:"start",font:{size:8},color:C.gold}}}}},
-      scales:{y:{title:{display:true,text:"%"},ticks:{callback:function(v){return v+'%';}}},x:{grid:{display:false}}}}});
+  // 8. DAU/MAU Stickiness (simple line chart)
+  var stkPct=g.stkTr;
+  mk("ch-"+gid+"-stkChart",{type:'line',data:{labels:M,datasets:[
+    {label:'DAU/MAU %',data:stkPct,borderColor:g.color,backgroundColor:a(g.color,0.3),borderWidth:2,pointRadius:2,tension:.3,fill:true}
+  ]},options:cfiOpts({scales:{y:{stacked:false,ticks:{font:{size:7},maxTicksLimit:4}}}})});
 
   // Minutes per Day (3-year view)
   const fy24mpd=tr(g.mpd[0]*0.78,g.mpd[11]*0.82);
@@ -1392,12 +1471,11 @@ function renderCharts(gid){
 }
 
 
-// ── GROWTH SECTION TOGGLE FUNCTIONS ──
+// ── GROWTH SECTION TOGGLE FUNCTIONS (CfI-style) ──
 function switchGrowthView(gid,view){
   var card=document.getElementById('ch-'+gid+'-mauGrowth').closest('.cc');
   card.querySelectorAll('.act-toggle').forEach(function(b){b.classList.toggle('active',view==='type'?b.textContent.includes('Type'):b.textContent.includes('Platform'));});
-  if(CI['ch-'+gid+'-mauGrowth']){CI['ch-'+gid+'-mauGrowth'].destroy();delete CI['ch-'+gid+'-mauGrowth'];}
-  document.getElementById('ch-'+gid+'-mauGrowth').innerHTML='';
+  resetCanvas('ch-'+gid+'-mauGrowth');
   var g=GAMES.find(function(x){return x.id===gid;});
   if(view==='type'){renderGrowthByType(gid,g);}else{renderGrowthByPlatform(gid,g);}
 }
@@ -1407,61 +1485,51 @@ function renderGrowthByType(gid,g){
   var churnArr=g.nu.map(function(v,i){return -(+(v*0.7+g.nu[i]*0.3*0.1).toFixed(2));});
   var net=acts.map(function(v,i){return +(v+res[i]+churnArr[i]).toFixed(2);});
   mk('ch-'+gid+'-mauGrowth',{type:'bar',data:{labels:M,datasets:[
-    {label:'Activations',data:acts,backgroundColor:C.green,borderRadius:4,barPercentage:.7,stack:'g',datalabels:{display:false}},
-    {label:'Resurrections',data:res,backgroundColor:C.teal,borderRadius:4,barPercentage:.7,stack:'g',datalabels:{display:false}},
-    {label:'Churn',data:churnArr,backgroundColor:C.red,borderRadius:4,barPercentage:.7,stack:'g',datalabels:{display:false}},
-    {label:'Net Growth',data:net,type:'line',borderColor:'#fff',borderWidth:2.5,pointRadius:3,fill:false,tension:.35,datalabels:lastPtLabel('M')}
-  ]},options:{responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{position:'top',labels:{font:{size:8}}},datalabels:{display:false}},
-    scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:'Users (M)'}}}}});
+    {label:'Activations',data:acts,backgroundColor:a(C.green,0.7),borderRadius:2,stack:'g',order:1},
+    {label:'Resurrections',data:res,backgroundColor:a(C.blue,0.6),borderRadius:2,stack:'g',order:1},
+    {label:'Churn',data:churnArr,backgroundColor:a(C.red,0.6),borderRadius:2,stack:'g',order:1},
+    {type:'line',label:'Net Growth',data:net,borderColor:'#fff',borderWidth:2,pointRadius:2,tension:.3,fill:false,order:0}
+  ]},options:cfiOpts()});
 }
 function renderGrowthByPlatform(gid,g){
   var conGr=g.mC.map(function(v,i){return i===0?0:+(v-g.mC[i-1]).toFixed(2);});
   var pcGr=g.mP.map(function(v,i){return i===0?0:+(v-g.mP[i-1]).toFixed(2);});
   var clGr=g.mCl.map(function(v,i){return i===0?0:+(v-g.mCl[i-1]).toFixed(2);});
   mk('ch-'+gid+'-mauGrowth',{type:'bar',data:{labels:M,datasets:[
-    {label:'Console',data:conGr,backgroundColor:C.green,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
-    {label:'PC',data:pcGr,backgroundColor:C.blue,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
-    {label:'Cloud',data:clGr,backgroundColor:C.purple,borderRadius:4,barPercentage:.7,datalabels:stackedTopLabel('M')}
-  ]},options:{responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{position:'top',labels:{font:{size:8}}},datalabels:{display:false}},
-    scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:'MoM \u0394 (M)'}}}}});
+    {label:'Console',data:conGr,backgroundColor:a(C.green,0.7),borderRadius:2,stack:'g',order:1},
+    {label:'PC',data:pcGr,backgroundColor:a(C.blue,0.7),borderRadius:2,stack:'g',order:1},
+    {label:'Cloud',data:clGr,backgroundColor:a(C.purple,0.7),borderRadius:2,stack:'g',order:1}
+  ]},options:cfiOpts()});
 }
 
 function switchIntensity(gid,view){
   var card=document.getElementById('ch-'+gid+'-mauIntensity').closest('.cc');
   card.querySelectorAll('.act-toggle').forEach(function(b){b.classList.toggle('active',view==='games'?b.textContent.includes('Games'):b.textContent.includes('Platforms'));});
-  if(CI['ch-'+gid+'-mauIntensity']){CI['ch-'+gid+'-mauIntensity'].destroy();delete CI['ch-'+gid+'-mauIntensity'];}
-  document.getElementById('ch-'+gid+'-mauIntensity').innerHTML='';
+  resetCanvas('ch-'+gid+'-mauIntensity');
   var g=GAMES.find(function(x){return x.id===gid;});
   if(view==='games'){renderIntensityGames(gid,g);}else{renderIntensityPlatforms(gid,g);}
 }
 function renderIntensityGames(gid,g){
   var g1=tr(45,38);var g2=tr(32,35);var g3=tr(23,27);
   mk('ch-'+gid+'-mauIntensity',{type:'bar',data:{labels:M,datasets:[
-    {label:'1 game',data:g1,backgroundColor:C.blue,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
-    {label:'2 games',data:g2,backgroundColor:C.teal,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
-    {label:'3+ games',data:g3,backgroundColor:C.lime,borderRadius:4,barPercentage:.7,datalabels:stackedTopLabel('%')}
-  ]},options:{responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{position:'top',labels:{font:{size:8}}},datalabels:{display:false}},
-    scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:'% of MAU'},max:100}}}});
+    {label:'1 game',data:g1,backgroundColor:a(C.blue,0.7),borderRadius:2,stack:'s'},
+    {label:'2 games',data:g2,backgroundColor:a(C.teal,0.7),borderRadius:2,stack:'s'},
+    {label:'3+ games',data:g3,backgroundColor:a(C.lime,0.7),borderRadius:2,stack:'s'}
+  ]},options:cfiOpts()});
 }
 function renderIntensityPlatforms(gid,g){
   var p1=tr(58,50);var p2=tr(28,32);var p3=tr(14,18);
   mk('ch-'+gid+'-mauIntensity',{type:'bar',data:{labels:M,datasets:[
-    {label:'1 platform',data:p1,backgroundColor:C.blue,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
-    {label:'2 platforms',data:p2,backgroundColor:C.purple,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
-    {label:'3+ platforms',data:p3,backgroundColor:C.cyan,borderRadius:4,barPercentage:.7,datalabels:stackedTopLabel('%')}
-  ]},options:{responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{position:'top',labels:{font:{size:8}}},datalabels:{display:false}},
-    scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:'% of MAU'},max:100}}}});
+    {label:'1 platform',data:p1,backgroundColor:a(C.blue,0.7),borderRadius:2,stack:'s'},
+    {label:'2 platforms',data:p2,backgroundColor:a(C.purple,0.7),borderRadius:2,stack:'s'},
+    {label:'3+ platforms',data:p3,backgroundColor:a(C.cyan,0.7),borderRadius:2,stack:'s'}
+  ]},options:cfiOpts()});
 }
 
 function switchActView(gid,view){
   var card=document.getElementById('ch-'+gid+'-actChannel').closest('.cc');
   card.querySelectorAll('.act-toggle').forEach(function(b){b.classList.toggle('active',view==='channel'?b.textContent.includes('Channel'):b.textContent.includes('Platform'));});
-  if(CI['ch-'+gid+'-actChannel']){CI['ch-'+gid+'-actChannel'].destroy();delete CI['ch-'+gid+'-actChannel'];}
-  document.getElementById('ch-'+gid+'-actChannel').innerHTML='';
+  resetCanvas('ch-'+gid+'-actChannel');
   var g=GAMES.find(function(x){return x.id===gid;});
   if(view==='channel'){renderActByChannel(gid,g);}else{renderActByPlatform(gid,g);}
 }
@@ -1470,33 +1538,28 @@ function renderActByChannel(gid,g){
   var paidMkt=g.nu.map(function(v){return +(v*0.25).toFixed(2);});
   var gpTrial=g.nu.map(function(v){return +(v*0.18).toFixed(2);});
   var social=g.nu.map(function(v){return +(v*0.15).toFixed(2);});
-  mk('ch-'+gid+'-actChannel',{type:'bar',data:{labels:M,datasets:[
-    {label:'Organic',data:organic,backgroundColor:C.green,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
-    {label:'Paid Marketing',data:paidMkt,backgroundColor:C.blue,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
-    {label:'GP Trial',data:gpTrial,backgroundColor:C.lime,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
-    {label:'Store/Social',data:social,backgroundColor:C.purple,borderRadius:4,barPercentage:.7,datalabels:stackedTopLabel('M')}
-  ]},options:{responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{position:'top',labels:{font:{size:8}}},datalabels:{display:false}},
-    scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:'Activations (M)'}}}}});
+  mk('ch-'+gid+'-actChannel',{type:'line',data:{labels:M,datasets:[
+    {label:'Organic',data:organic,borderColor:C.teal,backgroundColor:a(C.teal,0.5),borderWidth:1.5,pointRadius:1,tension:.3,fill:true},
+    {label:'Paid Marketing',data:paidMkt,borderColor:C.blue,backgroundColor:a(C.blue,0.5),borderWidth:1.5,pointRadius:1,tension:.3,fill:true},
+    {label:'GP Trial',data:gpTrial,borderColor:C.lime,backgroundColor:a(C.lime,0.5),borderWidth:1.5,pointRadius:1,tension:.3,fill:true},
+    {label:'Store/Social',data:social,borderColor:C.purple,backgroundColor:a(C.purple,0.5),borderWidth:1.5,pointRadius:1,tension:.3,fill:true}
+  ]},options:cfiOpts()});
 }
 function renderActByPlatform(gid,g){
   var conAct=g.nu.map(function(v){return +(v*0.50).toFixed(2);});
   var pcAct=g.nu.map(function(v){return +(v*0.35).toFixed(2);});
   var clAct=g.nu.map(function(v){return +(v*0.15).toFixed(2);});
-  mk('ch-'+gid+'-actChannel',{type:'bar',data:{labels:M,datasets:[
-    {label:'Console',data:conAct,backgroundColor:C.green,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
-    {label:'PC',data:pcAct,backgroundColor:C.blue,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
-    {label:'Cloud',data:clAct,backgroundColor:C.purple,borderRadius:4,barPercentage:.7,datalabels:stackedTopLabel('M')}
-  ]},options:{responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{position:'top',labels:{font:{size:8}}},datalabels:{display:false}},
-    scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:'Activations (M)'}}}}});
+  mk('ch-'+gid+'-actChannel',{type:'line',data:{labels:M,datasets:[
+    {label:'Console',data:conAct,borderColor:C.green,backgroundColor:a(C.green,0.5),borderWidth:1.5,pointRadius:1,tension:.3,fill:true},
+    {label:'PC',data:pcAct,borderColor:C.blue,backgroundColor:a(C.blue,0.5),borderWidth:1.5,pointRadius:1,tension:.3,fill:true},
+    {label:'Cloud',data:clAct,borderColor:C.purple,backgroundColor:a(C.purple,0.5),borderWidth:1.5,pointRadius:1,tension:.3,fill:true}
+  ]},options:cfiOpts()});
 }
 
 function switchResView(gid,view){
   var card=document.getElementById('ch-'+gid+'-resByChurn').closest('.cc');
   card.querySelectorAll('.act-toggle').forEach(function(b){b.classList.toggle('active',view==='duration'?b.textContent.includes('Duration'):b.textContent.includes('Platform'));});
-  if(CI['ch-'+gid+'-resByChurn']){CI['ch-'+gid+'-resByChurn'].destroy();delete CI['ch-'+gid+'-resByChurn'];}
-  document.getElementById('ch-'+gid+'-resByChurn').innerHTML='';
+  resetCanvas('ch-'+gid+'-resByChurn');
   var g=GAMES.find(function(x){return x.id===gid;});
   if(view==='duration'){renderResByDuration(gid,g);}else{renderResByPlatform(gid,g);}
 }
@@ -1505,32 +1568,30 @@ function renderResByDuration(gid,g){
   var r03=res.map(function(v){return +(v*0.50).toFixed(2);});
   var r312=res.map(function(v){return +(v*0.32).toFixed(2);});
   var r12p=res.map(function(v){return +(v*0.18).toFixed(2);});
-  mk('ch-'+gid+'-resByChurn',{type:'bar',data:{labels:M,datasets:[
-    {label:'0-3 mo',data:r03,backgroundColor:C.teal,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
-    {label:'3-12 mo',data:r312,backgroundColor:C.blue,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
-    {label:'12+ mo',data:r12p,backgroundColor:C.purple,borderRadius:4,barPercentage:.7,datalabels:stackedTopLabel('M')}
-  ]},options:{responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{position:'top',labels:{font:{size:8}}},datalabels:{display:false}},
-    scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:'Resurrections (M)'}}}}});
+  mk('ch-'+gid+'-resByChurn',{type:'line',data:{labels:M,datasets:[
+    {label:'0-3 mo churn',data:r03,borderColor:C.teal,backgroundColor:a(C.teal,0.5),borderWidth:1.5,pointRadius:1,tension:.3,fill:true},
+    {label:'3-12 mo churn',data:r312,borderColor:C.blue,backgroundColor:a(C.blue,0.5),borderWidth:1.5,pointRadius:1,tension:.3,fill:true},
+    {label:'12+ mo churn',data:r12p,borderColor:C.orange,backgroundColor:a(C.orange,0.5),borderWidth:1.5,pointRadius:1,tension:.3,fill:true}
+  ]},options:cfiOpts()});
 }
 function renderResByPlatform(gid,g){
   var res=g.nu.map(function(v){return +(v*0.3).toFixed(2);});
   var rCon=res.map(function(v){return +(v*0.48).toFixed(2);});
   var rPC=res.map(function(v){return +(v*0.35).toFixed(2);});
   var rCl=res.map(function(v){return +(v*0.17).toFixed(2);});
-  mk('ch-'+gid+'-resByChurn',{type:'bar',data:{labels:M,datasets:[
-    {label:'Console',data:rCon,backgroundColor:C.green,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
-    {label:'PC',data:rPC,backgroundColor:C.blue,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
-    {label:'Cloud',data:rCl,backgroundColor:C.purple,borderRadius:4,barPercentage:.7,datalabels:stackedTopLabel('M')}
-  ]},options:{responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{position:'top',labels:{font:{size:8}}},datalabels:{display:false}},
-    scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:'Resurrections (M)'}}}}});
+  mk('ch-'+gid+'-resByChurn',{type:'line',data:{labels:M,datasets:[
+    {label:'Console',data:rCon,borderColor:C.green,backgroundColor:a(C.green,0.5),borderWidth:1.5,pointRadius:1,tension:.3,fill:true},
+    {label:'PC',data:rPC,borderColor:C.blue,backgroundColor:a(C.blue,0.5),borderWidth:1.5,pointRadius:1,tension:.3,fill:true},
+    {label:'Cloud',data:rCl,borderColor:C.purple,backgroundColor:a(C.purple,0.5),borderWidth:1.5,pointRadius:1,tension:.3,fill:true}
+  ]},options:cfiOpts()});
 }
 
-// Initial render — use requestAnimationFrame to ensure DOM is laid out
+// Initial render — defer to after browser layout pass
 rendered.add("all");
 requestAnimationFrame(function(){
-  setTimeout(function(){ renderCharts("all"); }, 50);
+  requestAnimationFrame(function(){
+    renderCharts("all");
+  });
 });
 </script>
 </body>
