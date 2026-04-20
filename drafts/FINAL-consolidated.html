@@ -108,6 +108,7 @@ letter-spacing:0;line-height:1.4;text-align:left}
 .cg.g2{grid-template-columns:repeat(2,1fr)}
 .cg.g3{grid-template-columns:repeat(3,1fr)}
 .cg.g1{grid-template-columns:1fr}
+.cg.g4{grid-template-columns:repeat(4,1fr)}
 .cc{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px}
 .cc .ct{font-size:12px;font-weight:700;margin-bottom:2px;display:flex;align-items:center;gap:6px}
 .cc .cs{font-size:10px;color:var(--dim);margin-bottom:12px;font-style:italic}
@@ -170,9 +171,9 @@ font-size:10px;font-weight:700;color:rgba(255,255,255,.9);min-width:30px}
 .seg-col .sl{font-size:9px;color:var(--sec);text-transform:uppercase;margin-top:2px}
 
 /* ── RESPONSIVE ── */
-@media(max-width:1200px){.kg{grid-template-columns:repeat(2,1fr)}.cg.g3{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:1200px){.kg{grid-template-columns:repeat(2,1fr)}.cg.g3,.cg.g4{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:900px){.side{display:none}.main{margin-left:0}.tbar{left:0}
-.kg{grid-template-columns:1fr}.cg.g2,.cg.g3{grid-template-columns:1fr}}
+.kg{grid-template-columns:1fr}.cg.g2,.cg.g3,.cg.g4{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -261,6 +262,7 @@ const C={green:"#107C10",green2:"#10893E",lime:"#7FBA00",blue:"#0078D4",purple:"
 
 const SECTIONS=[
   {id:"exec",label:"Executive Summary",icon:"\u{1F4CA}",c:C.green},
+  {id:"goals",label:"Goals & Tracking",icon:"\u{1F3AF}",c:C.gold},
   {id:"growth",label:"Growth & Acquisition",icon:"\u{1F4C8}",c:C.blue},
   {id:"engage",label:"Engagement & Playtime",icon:"\u{1F3AE}",c:C.purple},
   {id:"monet",label:"Monetization & Revenue",icon:"\u{1F4B0}",c:C.gold},
@@ -630,12 +632,36 @@ function buildPanel(g){
 
   let h='';
   // ── EXEC SUMMARY ──
-  h+='<div class="sec" id="s-'+g.id+'-exec"><div class="sec-t">Executive Summary<span class="ill">(Illustrative Data)</span></div><div class="kg">';
+  h+='<div class="sec" id="s-'+g.id+'-exec"><div class="sec-t">Executive Summary<span class="ill">(Illustrative Data)</span></div>';
+
+  // Key Takeaways (replaces QBR cards)
+  if(g.qbr&&g.qbr.length>0){
+    h+='<div class="cc" style="margin-bottom:14px;border-left:3px solid '+ac+'"><div class="ct">\u{1F511} Key Takeaways</div>';
+    h+='<ul style="list-style:none;padding:0;margin:8px 0 0">';
+    g.qbr.forEach(q=>{
+      const pos=q.c===C.green||q.c===C.blue||q.c===C.purple;
+      const clr=pos?"#3fb950":"#E81123";
+      const arr=pos?"\u25B2":"\u25BC";
+      const sent=q.p.split(".")[0]+".";
+      h+='<li style="color:'+clr+';font-size:11px;padding:3px 0;font-weight:500">'+arr+' '+q.t+' \u2014 '+sent+'</li>';
+    });
+    h+='</ul></div>';
+  }
+
+  // KPI Tiles (no sparkline canvas)
+  h+='<div class="kg">';
   kpis.forEach((k,i)=>{
     const dn=k.d.includes("-");
-    h+='<div class="kt" style="--ac:'+kC[i]+'"><div class="kl">'+k.l+' <i class="ii" data-tip="'+k.t+'">i</i></div><div class="kv">'+k.v+'</div><div class="kd '+(dn?"dn":"up")+'">'+(dn?"\u25BC":"\u25B2")+' '+k.d+'</div><div class="ks">vs prior year</div><canvas class="sp" id="sp-'+g.id+'-'+i+'"></canvas></div>';
+    h+='<div class="kt" style="--ac:'+kC[i]+'"><div class="kl">'+k.l+' <i class="ii" data-tip="'+k.t+'">i</i></div><div class="kv">'+k.v+'</div><div class="kd '+(dn?"dn":"up")+'">'+(dn?"\u25BC":"\u25B2")+' '+k.d+'</div><div class="ks">vs prior year</div></div>';
   });
-  h+='</div></div>';
+  h+='</div>';
+
+  // KPI Sparkline Charts (proper inline charts, 4 per row)
+  h+='<div class="cg g4" style="margin-bottom:14px">';
+  kpis.forEach((k,i)=>{
+    h+='<div class="cc"><div class="ct" style="font-size:10px">'+k.l+'</div><div class="cw" style="height:200px" id="kpi-'+g.id+'-'+i+'"></div></div>';
+  });
+  h+='</div>';
 
   // Funnel visualization
   if(g.funnel){
@@ -652,62 +678,77 @@ function buildPanel(g){
     h+='</div></div>';
   }
 
-  // Segments + Goals row
-  if(g.segs||g.goals){
-    h+='<div class="cg g2">';
-    if(g.segs){
-      const sc={casual:C.cyan,core:C.lime,hardcore:C.orange};
-      h+='<div class="cc"><div class="ct">Player Segments</div><div class="cs">User base composition</div><div class="seg-bars">';
-      Object.entries(g.segs).forEach(([k,v])=>{
-        h+='<div class="seg-col"><div class="bar" style="height:'+(v*2.2)+'px;background:'+(sc[k]||C.blue)+'"></div><div class="sp">'+v+'%</div><div class="sl">'+k+'</div></div>';
-      });
-      h+='</div></div>';
-    }
-    if(g.goals){
-      h+='<div class="cc"><div class="ct">Goals vs Actuals</div><div class="cs">Progress against annual targets</div>';
-      g.goals.forEach(([lbl,actual,target])=>{
-        const pct=Math.min(100,Math.max(0,Math.abs(actual/target)*100)).toFixed(0);
-        const clr=pct>=95?C.green:pct>=85?C.gold:C.red;
-        h+='<div class="goal-row"><div class="goal-lbl">'+lbl+'</div><div class="goal-bar"><div class="goal-fill" style="width:'+pct+'%;background:'+clr+'"></div></div><div class="goal-val" style="color:'+clr+'">'+pct+'%</div></div>';
-      });
-      h+='</div>';
-    }
-    h+='</div>';
-  }
-
-  // QBR Narratives
-  if(g.qbr&&g.qbr.length>0){
-    h+='<div class="cg g'+(g.qbr.length>2?"2":"1")+'" style="margin-bottom:14px">';
-    g.qbr.forEach(q=>{
-      h+='<div class="qbr" style="border-left-color:'+q.c+'"><h4>'+q.t+'</h4><p>'+q.p+'</p></div>';
+  // Play Frequency Distribution + Goals row
+  h+='<div class="cg g2">';
+  h+='<div class="cc"><div class="ct">Play Frequency Distribution</div><div class="cs">% of MAU by days played per week</div><div class="cw" id="ch-'+g.id+'-playFreq"></div></div>';
+  if(g.goals){
+    h+='<div class="cc"><div class="ct">Goals vs Actuals</div><div class="cs">Progress against annual targets</div>';
+    g.goals.forEach(([lbl,actual,target])=>{
+      const pct=Math.min(100,Math.max(0,Math.abs(actual/target)*100)).toFixed(0);
+      const clr=pct>=95?C.green:pct>=85?C.gold:C.red;
+      h+='<div class="goal-row"><div class="goal-lbl">'+lbl+'</div><div class="goal-bar"><div class="goal-fill" style="width:'+pct+'%;background:'+clr+'"></div></div><div class="goal-val" style="color:'+clr+'">'+pct+'%</div></div>';
     });
     h+='</div>';
   }
+  h+='</div>';
+  h+='</div>'; // close exec section
+
+  // ── GOALS & TRACKING ──
+  const allGoalLabels=["Total MAU","Game Pass Subscribers","Monthly Revenue","Total Minutes Played","DAU/MAU Stickiness","Gross Margin","M1 Retention","Cloud Gaming MAU"];
+  const goalCount=g.id==="all"?8:(g.goals?Math.min(g.goals.length,8):0);
+  h+='<div class="sec" id="s-'+g.id+'-goals"><div class="sec-t">\u{1F3AF} Goals & Tracking<span class="ill">(Illustrative Data)</span></div>';
+  h+='<div class="cg g4">';
+  for(let gi=0;gi<goalCount;gi++){
+    const gLabel=g.id==="all"?allGoalLabels[gi]:(g.goals[gi]?g.goals[gi][0]:"Goal "+(gi+1));
+    h+='<div class="cc"><div class="ct" style="font-size:10px">'+gLabel+'</div><div class="cw" style="height:200px" id="goal-'+g.id+'-'+gi+'"></div></div>';
+  }
+  h+='</div></div>';
 
   // ── GROWTH ──
   h+='<div class="sec" id="s-'+g.id+'-growth"><div class="sec-t">User Growth & Acquisition<span class="ill">(Illustrative Data)</span></div>';
   h+='<div class="cg g2"><div class="cc"><div class="ct">MAU by Platform</div><div class="cs">Console, PC, and Cloud monthly active users</div><div class="cw" id="ch-'+g.id+'-mauPlat"></div></div>';
-  h+='<div class="cc"><div class="ct">New User Activations</div><div class="cs">Organic, paid, and viral acquisition channels</div><div class="cw" id="ch-'+g.id+'-newUsers"></div></div></div>';
+  h+='<div class="cc"><div class="ct">New User Activations</div><div class="cs">6-channel acquisition breakdown</div><div class="cw" id="ch-'+g.id+'-newUsers"></div></div></div>';
   h+='<div class="cg g2"><div class="cc"><div class="ct">MAU Trend</div><div class="cs">12-month rolling MAU and DAU</div><div class="cw" id="ch-'+g.id+'-mauTrend"></div></div>';
-  h+='<div class="cc"><div class="ct">Platform Mix</div><div class="cs">Current platform distribution</div><div class="cw short" id="ch-'+g.id+'-platMix"></div></div></div>';
-  h+='<div class="cg g2"><div class="cc"><div class="ct">Geographic Breakdown</div><div class="cs">MAU distribution by region</div><div class="cw" id="ch-'+g.id+'-geo"></div></div>';
-  h+='<div class="cc"><div class="ct">Acquisition Channel Mix</div><div class="cs">How users discover the platform</div><div class="cw" id="ch-'+g.id+'-acqMix"></div></div></div></div>';
+  h+='<div class="cc"><div class="ct">Geographic Breakdown</div><div class="cs">MAU distribution by region</div><div class="cw" id="ch-'+g.id+'-geo">';
+  h+='<svg viewBox="0 0 800 400" style="width:100%;height:100%">';
+  h+='<rect width="800" height="400" fill="transparent"/>';
+  h+='<path d="M50,80 L80,40 L200,30 L240,60 L250,120 L220,180 L180,200 L120,190 L80,160 L50,120Z" fill="#107C10" opacity="0.9"/>';
+  h+='<text x="145" y="115" fill="white" font-size="14" font-weight="bold" text-anchor="middle" font-family="Inter,sans-serif">NA</text>';
+  h+='<text x="145" y="135" fill="white" font-size="12" text-anchor="middle" font-family="Inter,sans-serif">38%</text>';
+  h+='<path d="M160,210 L200,200 L230,230 L240,300 L220,360 L190,380 L160,350 L140,280Z" fill="#7FBA00" opacity="0.55"/>';
+  h+='<text x="190" y="285" fill="white" font-size="12" font-weight="bold" text-anchor="middle" font-family="Inter,sans-serif">LATAM</text>';
+  h+='<text x="190" y="303" fill="white" font-size="11" text-anchor="middle" font-family="Inter,sans-serif">9%</text>';
+  h+='<path d="M340,40 L380,30 L440,35 L470,60 L480,110 L460,140 L420,150 L380,140 L350,110 L340,70Z" fill="#10893E" opacity="0.8"/>';
+  h+='<text x="410" y="85" fill="white" font-size="13" font-weight="bold" text-anchor="middle" font-family="Inter,sans-serif">Europe</text>';
+  h+='<text x="410" y="105" fill="white" font-size="11" text-anchor="middle" font-family="Inter,sans-serif">28%</text>';
+  h+='<path d="M380,160 L440,150 L480,180 L500,260 L480,320 L440,340 L400,310 L370,250 L365,200Z" fill="#8B949E" opacity="0.45"/>';
+  h+='<text x="430" y="245" fill="white" font-size="11" font-weight="bold" text-anchor="middle" font-family="Inter,sans-serif">AF/ME</text>';
+  h+='<text x="430" y="263" fill="white" font-size="10" text-anchor="middle" font-family="Inter,sans-serif">5%</text>';
+  h+='<path d="M520,50 L580,40 L660,50 L720,80 L740,140 L730,200 L680,220 L620,210 L560,180 L530,130 L520,90Z" fill="#49CCF9" opacity="0.6"/>';
+  h+='<text x="630" y="125" fill="white" font-size="13" font-weight="bold" text-anchor="middle" font-family="Inter,sans-serif">APAC</text>';
+  h+='<text x="630" y="145" fill="white" font-size="11" text-anchor="middle" font-family="Inter,sans-serif">20%</text>';
+  h+='<g transform="translate(610,280)">';
+  h+='<rect x="0" y="0" width="10" height="10" fill="#107C10" opacity="0.9" rx="2"/><text x="14" y="9" fill="#8B949E" font-size="9" font-family="Inter,sans-serif">NA 38%</text>';
+  h+='<rect x="0" y="15" width="10" height="10" fill="#10893E" opacity="0.8" rx="2"/><text x="14" y="24" fill="#8B949E" font-size="9" font-family="Inter,sans-serif">EU 28%</text>';
+  h+='<rect x="0" y="30" width="10" height="10" fill="#49CCF9" opacity="0.6" rx="2"/><text x="14" y="39" fill="#8B949E" font-size="9" font-family="Inter,sans-serif">APAC 20%</text>';
+  h+='<rect x="0" y="45" width="10" height="10" fill="#7FBA00" opacity="0.55" rx="2"/><text x="14" y="54" fill="#8B949E" font-size="9" font-family="Inter,sans-serif">LATAM 9%</text>';
+  h+='<rect x="0" y="60" width="10" height="10" fill="#8B949E" opacity="0.45" rx="2"/><text x="14" y="69" fill="#8B949E" font-size="9" font-family="Inter,sans-serif">AF/ME 5%</text>';
+  h+='</g></svg>';
+  h+='</div></div></div></div>';
 
   // ── ENGAGEMENT ──
   h+='<div class="sec" id="s-'+g.id+'-engage"><div class="sec-t">Engagement & Playtime<span class="ill">(Illustrative Data)</span></div>';
-  h+='<div class="cg g2"><div class="cc"><div class="ct">Minutes per User per Day</div><div class="cs">Average daily engagement depth</div><div class="cw" id="ch-'+g.id+'-mpd"></div></div>';
-  h+='<div class="cc"><div class="ct">DAU/MAU Stickiness</div><div class="cs">Higher = more habitual engagement</div><div class="cw" id="ch-'+g.id+'-stk"></div></div></div>';
-  h+='<div class="cg g3"><div class="cc"><div class="ct">Session Duration (min)</div><div class="cs">Avg session length</div><div class="cw short" id="ch-'+g.id+'-sLen"></div></div>';
-  h+='<div class="cc"><div class="ct">Days Active / Week</div><div class="cs">Engagement frequency</div><div class="cw short" id="ch-'+g.id+'-dAct"></div></div>';
+  h+='<div class="cg g2"><div class="cc"><div class="ct">Minutes per User per Day</div><div class="cs">3-year fiscal year comparison</div><div class="cw" id="ch-'+g.id+'-mpd"></div></div>';
+  h+='<div class="cc"><div class="ct">DAU/MAU Stickiness</div><div class="cs">3-year fiscal year comparison</div><div class="cw" id="ch-'+g.id+'-stk"></div></div></div>';
+  h+='<div class="cg g3"><div class="cc"><div class="ct">Session Duration (min)</div><div class="cs">3-year fiscal year comparison</div><div class="cw short" id="ch-'+g.id+'-sLen"></div></div>';
+  h+='<div class="cc"><div class="ct">Days Active / Week</div><div class="cs">Engagement frequency distribution</div><div class="cw short" id="ch-'+g.id+'-dAct"></div></div>';
   h+='<div class="cc"><div class="ct">Cross-Platform Play %</div><div class="cs">Users on 2+ platforms</div><div class="cw short" id="ch-'+g.id+'-cpPct"></div></div></div>';
-
-  // Spending Distribution
   h+='<div class="cg g2">';
-  h+='<div class="cc"><div class="ct">Spending Distribution (Whale Analysis)</div><div class="cs">Revenue concentration by spender tier</div><div class="cw" id="ch-'+g.id+'-whale"></div></div>';
+  h+='<div class="cc"><div class="ct">Spending Distribution (Whale Analysis)</div><div class="cs">Revenue concentration by spender tier</div><div class="cw" style="height:240px" id="ch-'+g.id+'-whale"></div></div>';
   h+='<div class="cc"><div class="ct">Peak Concurrent Users</div><div class="cs">Monthly peak concurrency trend</div><div class="cw" id="ch-'+g.id+'-pcu"></div></div>';
   h+='</div></div>';
 
-  // ── MONETIZATION ──
+    // ── MONETIZATION ──
   h+='<div class="sec" id="s-'+g.id+'-monet"><div class="sec-t">Monetization & Revenue<span class="ill">(Illustrative Data)</span></div>';
   h+='<div class="cg g2"><div class="cc"><div class="ct">Revenue by Stream</div><div class="cs">Stacked revenue breakdown</div><div class="cw tall" id="ch-'+g.id+'-revStr"></div></div>';
   h+='<div class="cc"><div class="ct">ARPU & ARPPU</div><div class="cs">Revenue per user (all vs paying)</div><div class="cw tall" id="ch-'+g.id+'-arpu"></div></div></div>';
@@ -873,6 +914,7 @@ function buildPanel(g){
     h+='</tbody></table></div></div>';
   }
   h+='</div>';
+  
   return h;
 }
 
@@ -961,104 +1003,207 @@ function stackedTopLabel(suffix){
       return Math.round(total)+suffix;}};
 }
 
+
+function everyNthLabel(n,suffix,decimals){
+  suffix=suffix||'';decimals=decimals!==undefined?decimals:1;
+  return{display:function(ctx){return ctx.dataIndex%n===0||ctx.dataIndex===ctx.dataset.data.length-1;},
+    anchor:'end',align:'top',offset:4,
+    color:function(ctx){return ctx.dataset.borderColor||'#fff';},
+    font:{weight:'bold',size:9},
+    formatter:function(v){if(v===null||v===undefined)return'';return(typeof v==='number'?v.toFixed(decimals):v)+suffix;}};
+}
+function allPtLabel(suffix,decimals){
+  suffix=suffix||'';decimals=decimals!==undefined?decimals:1;
+  return{display:true,anchor:'end',align:'top',offset:4,
+    color:function(ctx){return ctx.dataset.borderColor||'#fff';},
+    font:{weight:'bold',size:9},
+    formatter:function(v){if(v===null||v===undefined)return'';return(typeof v==='number'?v.toFixed(decimals):v)+suffix;}};
+}
+
 function renderCharts(gid){
   const g=GAMES.find(x=>x.id===gid);if(!g)return;
   const showGP=g.id==="all"||g.id==="gamepass";
+  const kC=[g.color,g.color,C.gold,C.purple,C.blue,g.margin&&g.margin.includes("-")?C.red:C.green,C.teal,C.lime];
+  const MA=["M","J","J","A","S","O","N","D","J","F","M","A"];
+  const FYM=["May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar","Apr"];
 
-  // Sparklines
+  // KPI Sparkline Charts (proper inline charts)
   const spD=[g.mauTr,g.gpTr,g.revTr,g.minTr,g.stkTr,g.retTr,g.retTr,g.npsTr];
+  const spS=["M","","$M","B","%","%","%",""];
   spD.forEach((d,i)=>{
-    const el=document.getElementById("sp-"+gid+"-"+i);
+    const elId="kpi-"+gid+"-"+i;
+    const el=document.getElementById(elId);
     if(!el||!d||d.every(v=>v===0))return;
-    el.width=90;el.height=40;
-    new Chart(el.getContext("2d"),{type:"line",data:{labels:M,datasets:[{data:d,borderColor:"#fff",borderWidth:1.5,pointRadius:0,tension:.4,fill:false}]},
-      options:{responsive:false,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{enabled:false},datalabels:{display:false}},scales:{x:{display:false},y:{display:false}}}});
+    mk(elId,{type:"line",data:{labels:MA,datasets:[{data:d,borderColor:kC[i],backgroundColor:kC[i]+"30",fill:"origin",borderWidth:2,tension:.35,pointRadius:2,pointHoverRadius:5}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:lastPtLabel(spS[i])},
+        scales:{x:{grid:{display:false},ticks:{font:{size:8}}},y:{grid:{color:"rgba(255,255,255,.04)"},ticks:{font:{size:8}}}}}});
   });
 
-  // MAU by Platform (stacked area)
+  // Play Frequency Distribution (stacked area)
+  const pfColors=["#0078D4","#49CCF9","#7B68EE","#00B7C3","#7FBA00","#FF8C00","#E81123"];
+  const pf1=tr(25,20);const pf2=tr(22,20);const pf3=tr(18,18);const pf4=tr(14,15);
+  const pf5=tr(10,12);const pf6=tr(6,8);const pf7=tr(5,7);
+  mk("ch-"+gid+"-playFreq",{type:"line",data:{labels:M,datasets:[
+    {...aDS("1 day",pf1,pfColors[0]),datalabels:lastPtLabel('%',0)},
+    {...aDS("2 days",pf2,pfColors[1]),datalabels:lastPtLabel('%',0)},
+    {...aDS("3 days",pf3,pfColors[2]),datalabels:lastPtLabel('%',0)},
+    {...aDS("4 days",pf4,pfColors[3]),datalabels:lastPtLabel('%',0)},
+    {...aDS("5 days",pf5,pfColors[4]),datalabels:lastPtLabel('%',0)},
+    {...aDS("6 days",pf6,pfColors[5]),datalabels:lastPtLabel('%',0)},
+    {...aDS("7 days",pf7,pfColors[6]),datalabels:lastPtLabel('%',0)}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:"top",labels:{font:{size:8}}},datalabels:{display:false}},
+      scales:{y:{stacked:true,title:{display:true,text:"% of MAU"},max:100},x:{grid:{display:false}}}}});
+
+  // Goals & Tracking section charts
+  const goalMonths=["Nov","Dec","Jan","Feb","Mar","Apr"];
+  if(g.id==="all"){
+    const allGoals=[
+      {label:"Total MAU",target:125,data:tr(114,120,6),suffix:"M",dec:0},
+      {label:"GP Subscribers",target:37,data:tr(31,35,6),suffix:"M",dec:0},
+      {label:"Monthly Revenue",target:1.9,data:tr(1.62,1.8,6),suffix:"B",dec:2},
+      {label:"Minutes Played",target:16,data:tr(14,15,6),suffix:"B",dec:0},
+      {label:"DAU/MAU",target:44,data:tr(40,42,6),suffix:"%",dec:0},
+      {label:"Gross Margin",target:-8,data:tr(-14,-12,6),suffix:"%",dec:0},
+      {label:"M1 Retention",target:70,data:tr(64.8,68,6),suffix:"%",dec:0},
+      {label:"Cloud MAU",target:20,data:tr(14,18,6),suffix:"M",dec:0}
+    ];
+    allGoals.forEach((gl,gi)=>{
+      const colors=gl.data.map(v=>{
+        const diff=gl.target>=0?v/gl.target:gl.target/v;
+        if(gl.suffix==="%"&&gl.target<0){return v<=gl.target?C.green:v<=gl.target*1.05?C.gold:C.red;}
+        return diff>=1?C.green:diff>=0.95?C.gold:C.red;
+      });
+      mk("goal-"+gid+"-"+gi,{type:"bar",data:{labels:goalMonths,datasets:[{
+        label:gl.label,data:gl.data,backgroundColor:colors,borderRadius:4,barPercentage:.65}]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+          datalabels:{display:true,anchor:'end',align:'top',offset:2,color:'#E6EDF3',font:{weight:'600',size:9},
+            formatter:function(v){return(gl.dec>0?v.toFixed(gl.dec):Math.round(v))+gl.suffix;}},
+          annotation:{annotations:{tgt:{type:"line",yMin:gl.target,yMax:gl.target,borderColor:C.gold,borderDash:[6,4],borderWidth:2,
+            label:{display:true,content:"Target: "+gl.target+gl.suffix,position:"start",font:{size:9},color:C.gold}}}}},
+          scales:{y:{grace:"15%"},x:{grid:{display:false}}}}});
+    });
+  } else if(g.goals){
+    g.goals.forEach(([lbl,actual,target],gi)=>{
+      const data=tr(actual*0.92,actual,6);
+      const suffix=lbl.includes("%")||lbl.includes("Margin")||lbl.includes("DAU")||lbl.includes("Ret")||lbl.includes("Churn")?"%":"";
+      const colors=data.map(v=>{
+        if(target<0){return v<=target?C.green:v<=target*1.05?C.gold:C.red;}
+        const r=v/target;return r>=1?C.green:r>=0.95?C.gold:C.red;
+      });
+      mk("goal-"+gid+"-"+gi,{type:"bar",data:{labels:goalMonths,datasets:[{
+        label:lbl,data:data,backgroundColor:colors,borderRadius:4,barPercentage:.65}]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+          datalabels:barTopLabel(suffix,1),
+          annotation:{annotations:{tgt:{type:"line",yMin:target,yMax:target,borderColor:C.gold,borderDash:[6,4],borderWidth:2,
+            label:{display:true,content:"Target: "+target,position:"start",font:{size:9},color:C.gold}}}}},
+          scales:{y:{grace:"15%"},x:{grid:{display:false}}}}});
+    });
+  }
+
+  // MAU by Platform (stacked area, data labels every other month + last)
   mk("ch-"+gid+"-mauPlat",{type:"line",data:{labels:M,datasets:[
-    {...aDS("Console",g.mC,C.green),datalabels:lastPtLabel('M')},{...aDS("PC",g.mP,C.blue),datalabels:lastPtLabel('M')},{...aDS("Cloud",g.mCl,C.purple),datalabels:lastPtLabel('M')}]},
+    {...aDS("Console",g.mC,C.green),datalabels:everyNthLabel(2,'M')},{...aDS("PC",g.mP,C.blue),datalabels:everyNthLabel(2,'M')},{...aDS("Cloud",g.mCl,C.purple),datalabels:everyNthLabel(2,'M')}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top"},datalabels:{display:false}},
       scales:{y:{stacked:true,title:{display:true,text:"MAU (M)"}},x:{grid:{display:false}}}}});
 
-  // New Users (stacked bar)
+  // New Users (6-channel stacked bar)
+  const orgSearch=g.org.map(v=>+(v*0.45).toFixed(2));
+  const wordOfMouth=g.org.map(v=>+(v*0.35).toFixed(2));
+  const gpTrial=g.org.map(v=>+(v*0.20).toFixed(2));
+  const paidMkt=g.paid;
+  const storeBrowse=g.paid.map(v=>+(v*0.6).toFixed(2));
+  const socialStr=g.paid.map(v=>+(v*0.4).toFixed(2));
   mk("ch-"+gid+"-newUsers",{type:"bar",data:{labels:M,datasets:[
-    {...bDS("Organic",g.org,C.green),datalabels:stackedTopLabel('M')},{...bDS("Paid",g.paid,C.blue),datalabels:stackedTopLabel('M')},
-    {...bDS("Viral",g.org.map(v=>+(v*.25).toFixed(2)),C.purple),datalabels:stackedTopLabel('M')}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top"},datalabels:{display:false}},
+    {...bDS("Organic Search",orgSearch,C.green)},{...bDS("Word of Mouth",wordOfMouth,C.blue)},
+    {...bDS("Game Pass Trial",gpTrial,C.lime)},{...bDS("Paid Marketing",paidMkt,C.orange)},
+    {...bDS("Store Browse",storeBrowse,C.purple)},{...bDS("Social/Streaming",socialStr,C.pink)}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top",labels:{font:{size:8}}},datalabels:stackedTopLabel('M')},
       scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:"New Users (M)"}}}}});
 
-  // MAU+DAU Trend
+  // MAU+DAU Trend (data labels on every point)
   mk("ch-"+gid+"-mauTrend",{type:"line",data:{labels:M,datasets:[
-    {...lDS("MAU",g.mauTr,g.color),datalabels:lastPtLabel('M')},{...lDS("DAU",g.dauTr,C.blue),datalabels:lastPtLabel('M')}]},
+    {...lDS("MAU",g.mauTr,g.color),datalabels:allPtLabel('M')},{...lDS("DAU",g.dauTr,C.blue),datalabels:allPtLabel('M')}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top"},datalabels:{display:false}},
       scales:{y:{title:{display:true,text:"Users (M)"}},x:{grid:{display:false}}}}});
 
-  // Platform Mix (doughnut)
-  mk("ch-"+gid+"-platMix",{type:"doughnut",data:{labels:["Console","PC","Cloud"],
-    datasets:[{data:[g.pCon,g.pPC,g.pCl],backgroundColor:[C.green,C.blue,C.purple],borderWidth:0}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:"65%",plugins:{legend:{position:"right"},
-      datalabels:{display:true,color:"#fff",font:{weight:"bold",size:11},formatter:v=>v+"%"}}}});
-
-  // Geographic Breakdown (horizontal bar)
-  mk("ch-"+gid+"-geo",{type:"bar",data:{
-    labels:["North America","Europe","Asia Pacific","Latin America","Middle East/Africa"],
-    datasets:[{label:"% of MAU",data:[38,28,20,9,5],backgroundColor:[C.green,C.blue,C.purple,C.orange,C.gold],borderRadius:4,barPercentage:.6}]},
-    options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},datalabels:{display:true,anchor:"end",align:"right",color:"#fff",font:{weight:"bold",size:10},formatter:v=>v+"%"}},
-      scales:{x:{title:{display:true,text:"% of MAU"},max:50,grid:{color:"rgba(255,255,255,.04)"}},y:{grid:{display:false}}}}});
-
-  // Acquisition Channel Mix (doughnut)
-  mk("ch-"+gid+"-acqMix",{type:"doughnut",data:{labels:["Organic Search","Word of Mouth","Game Pass Trial","Paid Ads","Store Browse","Social/Streaming"],
-    datasets:[{data:[28,22,18,15,10,7],backgroundColor:[C.green,C.blue,C.lime,C.orange,C.purple,C.pink],borderWidth:0}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:"55%",plugins:{legend:{position:"right",labels:{font:{size:9}}},
-      datalabels:{display:true,color:"#fff",font:{weight:"bold",size:9},formatter:v=>v+"%"}}}});
-
-  // Min per Day (bar)
-  mk("ch-"+gid+"-mpd",{type:"bar",data:{labels:M,datasets:[bDS("Min/Day",g.mpd,g.color)]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:barTopLabel('',0)},
+  // Minutes per Day (3-year view)
+  const fy24mpd=tr(g.mpd[0]*0.78,g.mpd[11]*0.82);
+  const fy25mpd=tr(g.mpd[0]*0.88,g.mpd[11]*0.93);
+  const fy26mpdActual=g.mpd.slice(0,11).concat([null]);
+  const fy26mpdForecast=Array(10).fill(null).concat([g.mpd[10],g.mpd[11]]);
+  const mpdTarget=g.mpd[11]*1.08;
+  mk("ch-"+gid+"-mpd",{type:"line",data:{labels:FYM,datasets:[
+    {...lDS("FY24",fy24mpd,"#484F58"),borderWidth:1.5,pointRadius:2},
+    {...lDS("FY25",fy25mpd,C.blue),borderWidth:2},
+    {...lDS("FY26 (Actual)",fy26mpdActual,C.green),borderWidth:3,datalabels:lastPtLabel(' min',0)},
+    {...lDS("FY26 (Forecast)",fy26mpdForecast,C.green),borderWidth:2,borderDash:[6,4],pointStyle:"circle",pointRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top",labels:{font:{size:9}}},datalabels:{display:false},
+      annotation:{annotations:{tgt:{type:"line",yMin:mpdTarget,yMax:mpdTarget,borderColor:C.gold+"80",borderDash:[6,4],borderWidth:1,
+        label:{display:true,content:"FY26 Target",position:"start",font:{size:8},color:C.gold}}}}},
       scales:{y:{title:{display:true,text:"Minutes"}},x:{grid:{display:false}}}}});
 
-  // Stickiness (area with target line)
-  mk("ch-"+gid+"-stk",{type:"line",data:{labels:M,datasets:[
-    {...lDS("DAU/MAU %",g.stkTr,C.cyan),fill:true,backgroundColor:C.cyan+"35"}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:lastPtLabel('%'),
-      annotation:{annotations:{tgt:{type:"line",yMin:45,yMax:45,borderColor:C.gold+"60",borderDash:[6,4],borderWidth:1,
-        label:{display:true,content:"Target: 45%",position:"start",font:{size:9},color:C.gold}}}}},
-      scales:{y:{title:{display:true,text:"%"},min:20,max:55},x:{grid:{display:false}}}}});
-
-  // Session Length
-  mk("ch-"+gid+"-sLen",{type:"line",data:{labels:M,datasets:[lDS("Session (min)",g.sLen,C.orange)]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:lastPtLabel(' min')},
-      scales:{y:{title:{display:true,text:"Min"}},x:{grid:{display:false}}}}});
-
-  // Days Active
-  mk("ch-"+gid+"-dAct",{type:"bar",data:{labels:M,datasets:[bDS("Days/Week",g.dAct,C.purple)]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:barTopLabel('',1)},
-      scales:{y:{title:{display:true,text:"Days"},min:0,max:7},x:{grid:{display:false}}}}});
-
-  // Cross-play %
-  mk("ch-"+gid+"-cpPct",{type:"line",data:{labels:M,datasets:[
-    {...lDS("Cross-Play %",g.cp,C.teal),fill:true,backgroundColor:C.teal+"35"}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:lastPtLabel('%')},
+  // DAU/MAU Stickiness (3-year view)
+  const fy24stk=tr(g.stkTr[0]*0.88,g.stkTr[11]*0.90);
+  const fy25stk=tr(g.stkTr[0]*0.94,g.stkTr[11]*0.96);
+  const fy26stkActual=g.stkTr.slice(0,11).concat([null]);
+  const fy26stkForecast=Array(10).fill(null).concat([g.stkTr[10],g.stkTr[11]]);
+  mk("ch-"+gid+"-stk",{type:"line",data:{labels:FYM,datasets:[
+    {...lDS("FY24",fy24stk,"#484F58"),borderWidth:1.5,pointRadius:2},
+    {...lDS("FY25",fy25stk,C.blue),borderWidth:2},
+    {...lDS("FY26 (Actual)",fy26stkActual,C.cyan),borderWidth:3,fill:true,backgroundColor:C.cyan+"25",datalabels:lastPtLabel('%')},
+    {...lDS("FY26 (Forecast)",fy26stkForecast,C.cyan),borderWidth:2,borderDash:[6,4]}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top",labels:{font:{size:9}}},datalabels:{display:false},
+      annotation:{annotations:{tgt:{type:"line",yMin:44,yMax:44,borderColor:C.gold+"80",borderDash:[6,4],borderWidth:1,
+        label:{display:true,content:"Target: 44%",position:"start",font:{size:8},color:C.gold}}}}},
       scales:{y:{title:{display:true,text:"%"},ticks:{callback:function(v){return v+'%';}}},x:{grid:{display:false}}}}});
 
-  // Whale Analysis (horizontal bar)
-  const whaleData=[60,25,10,5];
-  const whalePop=[5,15,30,50];
+  // Session Length (3-year view)
+  const fy24sLen=tr(g.sLen[0]*0.84,g.sLen[11]*0.86);
+  const fy25sLen=tr(g.sLen[0]*0.92,g.sLen[11]*0.94);
+  const fy26sLenActual=g.sLen.slice(0,11).concat([null]);
+  const fy26sLenForecast=Array(10).fill(null).concat([g.sLen[10],g.sLen[11]]);
+  mk("ch-"+gid+"-sLen",{type:"line",data:{labels:FYM,datasets:[
+    {...lDS("FY24",fy24sLen,"#484F58"),borderWidth:1.5,pointRadius:2},
+    {...lDS("FY25",fy25sLen,C.blue),borderWidth:2},
+    {...lDS("FY26 (Actual)",fy26sLenActual,C.orange),borderWidth:3,datalabels:lastPtLabel(' min')},
+    {...lDS("FY26 (Forecast)",fy26sLenForecast,C.orange),borderWidth:2,borderDash:[6,4]}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top",labels:{font:{size:8}}},datalabels:{display:false}},
+      scales:{y:{title:{display:true,text:"Min"}},x:{grid:{display:false}}}}});
+
+  // Days Active (stacked area)
+  const da1=tr(30,24);const da23=tr(28,26);const da45=tr(20,22);const da6=tr(14,16);const da7=tr(8,12);
+  const daColors=[C.blue,C.cyan,C.purple,C.orange,C.red];
+  mk("ch-"+gid+"-dAct",{type:"line",data:{labels:M,datasets:[
+    {...aDS("1 day",da1,daColors[0]),datalabels:lastPtLabel('%',0)},
+    {...aDS("2-3 days",da23,daColors[1]),datalabels:lastPtLabel('%',0)},
+    {...aDS("4-5 days",da45,daColors[2]),datalabels:lastPtLabel('%',0)},
+    {...aDS("6 days",da6,daColors[3]),datalabels:lastPtLabel('%',0)},
+    {...aDS("Daily (7)",da7,daColors[4]),datalabels:lastPtLabel('%',0)}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top",labels:{font:{size:8}}},datalabels:{display:false}},
+      scales:{y:{stacked:true,title:{display:true,text:"%"},max:100},x:{grid:{display:false}}}}});
+
+  // Cross-play % (data labels on EVERY point)
+  mk("ch-"+gid+"-cpPct",{type:"line",data:{labels:M,datasets:[
+    {...lDS("Cross-Play %",g.cp,C.teal),fill:true,backgroundColor:C.teal+"35",datalabels:allPtLabel('%')}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:false}},
+      scales:{y:{title:{display:true,text:"%"},ticks:{callback:function(v){return v+'%';}}},x:{grid:{display:false}}}}});
+
+  // Whale Analysis (fixed horizontal bar)
   mk("ch-"+gid+"-whale",{type:"bar",data:{
     labels:["Whales (top 5%)","Core Spenders (15%)","Casual Spenders (30%)","Free Players (50%)"],
-    datasets:[{label:"% of Revenue",data:whaleData,backgroundColor:[C.red,C.orange,C.gold,C.blue],borderRadius:4,barPercentage:.6}]},
+    datasets:[{label:"% of Revenue",data:[60,25,10,5],backgroundColor:[C.red,C.orange,C.gold,C.blue],borderRadius:4,barPercentage:.7}]},
     options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},datalabels:{display:true,anchor:"end",align:"right",color:"#fff",font:{weight:"bold",size:10},formatter:v=>v+"%"}},
+      plugins:{legend:{display:false},datalabels:{display:true,anchor:"end",align:"right",color:"#fff",font:{weight:"bold",size:11},formatter:v=>v+"%"}},
       scales:{x:{title:{display:true,text:"% of Revenue"},max:70,grid:{color:"rgba(255,255,255,.04)"}},y:{grid:{display:false}}}}});
 
-  // Peak Concurrent Users
+  // Peak Concurrent Users (vivid colored bars)
   const pcuData=g.mauTr.map((v,i)=>+(v*(g.stkTr[i]/100)*0.15).toFixed(2));
-  mk("ch-"+gid+"-pcu",{type:"bar",data:{labels:M,datasets:[bDS("Peak Concurrent (M)",pcuData,C.pink)]},
+  mk("ch-"+gid+"-pcu",{type:"bar",data:{labels:M,datasets:[{...bDS("Peak Concurrent (M)",pcuData,g.color),borderRadius:4}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:barTopLabel('M',1)},
       scales:{y:{title:{display:true,text:"Users (M)"}},x:{grid:{display:false}}}}});
 
+  
   // Revenue by Stream (stacked bar)
   mk("ch-"+gid+"-revStr",{type:"bar",data:{labels:M,datasets:[
     {...bDS("Subscriptions",g.rSub,C.green),datalabels:stackedTopLabel('M')},{...bDS("MTX",g.rMtx,C.blue),datalabels:stackedTopLabel('M')},
