@@ -174,6 +174,9 @@ font-size:10px;font-weight:700;color:rgba(255,255,255,.9);min-width:30px}
 @media(max-width:1200px){.kg{grid-template-columns:repeat(2,1fr)}.cg.g3,.cg.g4{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:900px){.side{display:none}.main{margin-left:0}.tbar{left:0}
 .kg{grid-template-columns:1fr}.cg.g2,.cg.g3,.cg.g4{grid-template-columns:1fr}}
+.act-toggle{padding:2px 6px;font-size:9px;font-weight:600;cursor:pointer;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--sec)}
+.act-toggle:hover{border-color:var(--green2);color:var(--text)}
+.act-toggle.active{background:rgba(16,137,62,.15);border-color:var(--green2);color:#fff}
 </style>
 </head>
 <body>
@@ -690,35 +693,19 @@ function buildPanel(g){
 
   // ── GROWTH ──
   h+='<div class="sec" id="s-'+g.id+'-growth"><div class="sec-t">User Growth & Acquisition<span class="ill">(Illustrative Data)</span></div>';
-  h+='<div class="cg g2"><div class="cc"><div class="ct">MAU by Platform</div><div class="cs">Console, PC, and Cloud monthly active users</div><div class="cw" id="ch-'+g.id+'-mauPlat"></div></div>';
-  h+='<div class="cc"><div class="ct">New User Activations</div><div class="cs">6-channel acquisition breakdown</div><div class="cw" id="ch-'+g.id+'-newUsers"></div></div></div>';
-  h+='<div class="cg g2"><div class="cc"><div class="ct">MAU Trend</div><div class="cs">12-month rolling MAU and DAU</div><div class="cw" id="ch-'+g.id+'-mauTrend"></div></div>';
-  h+='<div class="cc"><div class="ct">Geographic Breakdown</div><div class="cs">MAU distribution by region</div><div class="cw" id="ch-'+g.id+'-geo">';
-  h+='<svg viewBox="0 0 800 400" style="width:100%;height:100%">';
-  h+='<rect width="800" height="400" fill="transparent"/>';
-  h+='<path d="M50,80 L80,40 L200,30 L240,60 L250,120 L220,180 L180,200 L120,190 L80,160 L50,120Z" fill="#107C10" opacity="0.9"/>';
-  h+='<text x="145" y="115" fill="white" font-size="14" font-weight="bold" text-anchor="middle" font-family="Inter,sans-serif">NA</text>';
-  h+='<text x="145" y="135" fill="white" font-size="12" text-anchor="middle" font-family="Inter,sans-serif">38%</text>';
-  h+='<path d="M160,210 L200,200 L230,230 L240,300 L220,360 L190,380 L160,350 L140,280Z" fill="#7FBA00" opacity="0.55"/>';
-  h+='<text x="190" y="285" fill="white" font-size="12" font-weight="bold" text-anchor="middle" font-family="Inter,sans-serif">LATAM</text>';
-  h+='<text x="190" y="303" fill="white" font-size="11" text-anchor="middle" font-family="Inter,sans-serif">9%</text>';
-  h+='<path d="M340,40 L380,30 L440,35 L470,60 L480,110 L460,140 L420,150 L380,140 L350,110 L340,70Z" fill="#10893E" opacity="0.8"/>';
-  h+='<text x="410" y="85" fill="white" font-size="13" font-weight="bold" text-anchor="middle" font-family="Inter,sans-serif">Europe</text>';
-  h+='<text x="410" y="105" fill="white" font-size="11" text-anchor="middle" font-family="Inter,sans-serif">28%</text>';
-  h+='<path d="M380,160 L440,150 L480,180 L500,260 L480,320 L440,340 L400,310 L370,250 L365,200Z" fill="#8B949E" opacity="0.45"/>';
-  h+='<text x="430" y="245" fill="white" font-size="11" font-weight="bold" text-anchor="middle" font-family="Inter,sans-serif">AF/ME</text>';
-  h+='<text x="430" y="263" fill="white" font-size="10" text-anchor="middle" font-family="Inter,sans-serif">5%</text>';
-  h+='<path d="M520,50 L580,40 L660,50 L720,80 L740,140 L730,200 L680,220 L620,210 L560,180 L530,130 L520,90Z" fill="#49CCF9" opacity="0.6"/>';
-  h+='<text x="630" y="125" fill="white" font-size="13" font-weight="bold" text-anchor="middle" font-family="Inter,sans-serif">APAC</text>';
-  h+='<text x="630" y="145" fill="white" font-size="11" text-anchor="middle" font-family="Inter,sans-serif">20%</text>';
-  h+='<g transform="translate(610,280)">';
-  h+='<rect x="0" y="0" width="10" height="10" fill="#107C10" opacity="0.9" rx="2"/><text x="14" y="9" fill="#8B949E" font-size="9" font-family="Inter,sans-serif">NA 38%</text>';
-  h+='<rect x="0" y="15" width="10" height="10" fill="#10893E" opacity="0.8" rx="2"/><text x="14" y="24" fill="#8B949E" font-size="9" font-family="Inter,sans-serif">EU 28%</text>';
-  h+='<rect x="0" y="30" width="10" height="10" fill="#49CCF9" opacity="0.6" rx="2"/><text x="14" y="39" fill="#8B949E" font-size="9" font-family="Inter,sans-serif">APAC 20%</text>';
-  h+='<rect x="0" y="45" width="10" height="10" fill="#7FBA00" opacity="0.55" rx="2"/><text x="14" y="54" fill="#8B949E" font-size="9" font-family="Inter,sans-serif">LATAM 9%</text>';
-  h+='<rect x="0" y="60" width="10" height="10" fill="#8B949E" opacity="0.45" rx="2"/><text x="14" y="69" fill="#8B949E" font-size="9" font-family="Inter,sans-serif">AF/ME 5%</text>';
-  h+='</g></svg>';
-  h+='</div></div></div></div>';
+  h+='<div class="cg g4">';
+  h+='<div class="cc"><div class="ct">MAU by Platform</div><div class="cs">Console, PC, Cloud stacked monthly</div><div class="cw" id="ch-'+g.id+'-mauPlat"></div></div>';
+  h+='<div class="cc"><div class="ct">MAU Growth<span style="float:right;display:inline-flex;gap:4px"><button class="act-toggle active" onclick="switchGrowthView(\''+g.id+'\',\'type\')">by Type</button><button class="act-toggle" onclick="switchGrowthView(\''+g.id+'\',\'platform\')">by Platform</button></span></div><div class="cs">Activations, resurrections &amp; churn</div><div class="cw" id="ch-'+g.id+'-mauGrowth"></div></div>';
+  h+='<div class="cc"><div class="ct">MAU by Usage Intensity<span style="float:right;display:inline-flex;gap:4px"><button class="act-toggle active" onclick="switchIntensity(\''+g.id+'\',\'games\')"># Games</button><button class="act-toggle" onclick="switchIntensity(\''+g.id+'\',\'platforms\')"># Platforms</button></span></div><div class="cs">Multi-game / platform engagement</div><div class="cw" id="ch-'+g.id+'-mauIntensity"></div></div>';
+  h+='<div class="cc"><div class="ct">MAU by Cohort Tenure</div><div class="cs">User composition by tenure cohort</div><div class="cw" id="ch-'+g.id+'-mauTenure"></div></div>';
+  h+='</div>';
+  h+='<div class="cg g4" style="margin-top:12px">';
+  h+='<div class="cc"><div class="ct">Activations by Channel<span style="float:right;display:inline-flex;gap:4px"><button class="act-toggle active" onclick="switchActView(\''+g.id+'\',\'channel\')">by Channel</button><button class="act-toggle" onclick="switchActView(\''+g.id+'\',\'platform\')">by Platform</button></span></div><div class="cs">New user acquisition sources</div><div class="cw" id="ch-'+g.id+'-actChannel"></div></div>';
+  h+='<div class="cc"><div class="ct">Resurrections by Churn<span style="float:right;display:inline-flex;gap:4px"><button class="act-toggle active" onclick="switchResView(\''+g.id+'\',\'duration\')">by Duration</button><button class="act-toggle" onclick="switchResView(\''+g.id+'\',\'platform\')">by Platform</button></span></div><div class="cs">Returned users by lapse length</div><div class="cw" id="ch-'+g.id+'-resByChurn"></div></div>';
+  h+='<div class="cc"><div class="ct">Retention Milestones</div><div class="cs">M1, M3, M6, M12 retention rates</div><div class="cw" id="ch-'+g.id+'-retMile"></div></div>';
+  h+='<div class="cc"><div class="ct">DAU/MAU Stickiness</div><div class="cs">Engagement ratio trend with target</div><div class="cw" id="ch-'+g.id+'-stkChart"></div></div>';
+  h+='</div>';
+  h+='</div>';
 
   // ── ENGAGEMENT ──
   h+='<div class="sec" id="s-'+g.id+'-engage"><div class="sec-t">Engagement & Playtime<span class="ill">(Illustrative Data)</span></div>';
@@ -1141,31 +1128,58 @@ function renderCharts(gid){
       plugins:{legend:{position:"top",labels:{font:{size:8}}},datalabels:{display:false}},
       scales:{y:{stacked:true,title:{display:true,text:"% of MAU"},max:100},x:{grid:{display:false}}}}});
 
-  // MAU by Platform (stacked area, data labels every other month + last)
-  mk("ch-"+gid+"-mauPlat",{type:"line",data:{labels:M,datasets:[
-    {...aDS("Console",g.mC,C.green),datalabels:everyNthLabel(2,'M')},{...aDS("PC",g.mP,C.blue),datalabels:everyNthLabel(2,'M')},{...aDS("Cloud",g.mCl,C.purple),datalabels:everyNthLabel(2,'M')}]},
+  // 1. MAU by Platform (stacked bar)
+  mk("ch-"+gid+"-mauPlat",{type:"bar",data:{labels:M,datasets:[
+    {...bDS("Console",g.mC,C.green),datalabels:stackedTopLabel('M')},
+    {...bDS("PC",g.mP,C.blue),datalabels:stackedTopLabel('M')},
+    {...bDS("Cloud",g.mCl,C.purple),datalabels:stackedTopLabel('M')}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top"},datalabels:{display:false}},
+      scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:"MAU (M)"}}}}});
+
+  // 2. MAU Growth waterfall (default: by type)
+  renderGrowthByType(gid,g);
+
+  // 3. MAU by Usage Intensity (default: # games)
+  renderIntensityGames(gid,g);
+
+  // 4. MAU by Cohort Tenure (stacked area)
+  var tenureTotal=g.mauTr;
+  var t12p=tenureTotal.map(function(v){return +(v*0.60).toFixed(2);});
+  var t3_12=tenureTotal.map(function(v){return +(v*0.25).toFixed(2);});
+  var t1_3=tenureTotal.map(function(v){return +(v*0.10).toFixed(2);});
+  var tNew=tenureTotal.map(function(v){return +(v*0.05).toFixed(2);});
+  mk("ch-"+gid+"-mauTenure",{type:"line",data:{labels:M,datasets:[
+    {...aDS("12+ months",t12p,"#484F58"),datalabels:{display:false}},
+    {...aDS("3-12 months",t3_12,C.blue),datalabels:{display:false}},
+    {...aDS("1-3 months",t1_3,C.teal),datalabels:{display:false}},
+    {...aDS("New (Activation mo)",tNew,C.lime),datalabels:lastPtLabel('M')}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top",labels:{font:{size:8}}},datalabels:{display:false}},
       scales:{y:{stacked:true,title:{display:true,text:"MAU (M)"}},x:{grid:{display:false}}}}});
 
-  // New Users (6-channel stacked bar)
-  const orgSearch=g.org.map(v=>+(v*0.45).toFixed(2));
-  const wordOfMouth=g.org.map(v=>+(v*0.35).toFixed(2));
-  const gpTrial=g.org.map(v=>+(v*0.20).toFixed(2));
-  const paidMkt=g.paid;
-  const storeBrowse=g.paid.map(v=>+(v*0.6).toFixed(2));
-  const socialStr=g.paid.map(v=>+(v*0.4).toFixed(2));
-  mk("ch-"+gid+"-newUsers",{type:"bar",data:{labels:M,datasets:[
-    {...bDS("Organic Search",orgSearch,C.green)},{...bDS("Word of Mouth",wordOfMouth,C.blue)},
-    {...bDS("Game Pass Trial",gpTrial,C.lime)},{...bDS("Paid Marketing",paidMkt,C.orange)},
-    {...bDS("Store Browse",storeBrowse,C.purple)},{...bDS("Social/Streaming",socialStr,C.pink)}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top",labels:{font:{size:8}}},datalabels:stackedTopLabel('M')},
-      scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:"New Users (M)"}}}}});
+  // 5. Activations by Channel (default: by channel)
+  renderActByChannel(gid,g);
 
-  // MAU+DAU Trend (data labels on every point)
-  mk("ch-"+gid+"-mauTrend",{type:"line",data:{labels:M,datasets:[
-    {...lDS("MAU",g.mauTr,g.color),datalabels:allPtLabel('M')},{...lDS("DAU",g.dauTr,C.blue),datalabels:allPtLabel('M')}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top"},datalabels:{display:false}},
-      scales:{y:{title:{display:true,text:"Users (M)"}},x:{grid:{display:false}}}}});
+  // 6. Resurrections by Churn Length (default: by duration)
+  renderResByDuration(gid,g);
+
+  // 7. Retention Milestones
+  var m12Ret=g.cM6.map(function(v){return +(v*0.7).toFixed(1);});
+  mk("ch-"+gid+"-retMile",{type:"line",data:{labels:M,datasets:[
+    {...lDS("M1",g.cM1,C.green),datalabels:lastPtLabel('%')},
+    {...lDS("M3",g.cM3,C.blue),datalabels:lastPtLabel('%')},
+    {...lDS("M6",g.cM6,C.purple),datalabels:lastPtLabel('%')},
+    {...lDS("M12",m12Ret,C.orange),datalabels:lastPtLabel('%')}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top",labels:{font:{size:8}}},datalabels:{display:false}},
+      scales:{y:{title:{display:true,text:"%"},min:0,max:100,ticks:{callback:function(v){return v+'%';}}},x:{grid:{display:false}}}}});
+
+  // 8. DAU/MAU Stickiness
+  var stkTarget=gid==='all'?45:gid==='gamepass'?50:40;
+  mk("ch-"+gid+"-stkChart",{type:"line",data:{labels:M,datasets:[
+    {...lDS("DAU/MAU %",g.stkTr,C.cyan),fill:true,backgroundColor:C.cyan+"30",datalabels:allPtLabel('%')}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:false},
+      annotation:{annotations:{tgt:{type:"line",yMin:stkTarget,yMax:stkTarget,borderColor:C.gold+"80",borderDash:[6,4],borderWidth:1,
+        label:{display:true,content:"Target: "+stkTarget+"%",position:"start",font:{size:8},color:C.gold}}}}},
+      scales:{y:{title:{display:true,text:"%"},ticks:{callback:function(v){return v+'%';}}},x:{grid:{display:false}}}}});
 
   // Minutes per Day (3-year view)
   const fy24mpd=tr(g.mpd[0]*0.78,g.mpd[11]*0.82);
@@ -1370,6 +1384,142 @@ function renderCharts(gid){
       annotation:{annotations:{tgt:{type:"line",yMin:40,yMax:40,borderColor:C.gold+"60",borderDash:[6,4],borderWidth:1,
         label:{display:true,content:"Target: 40ms",position:"start",font:{size:9},color:C.gold}}}}},
       scales:{y:{title:{display:true,text:"ms"},reverse:true},x:{grid:{display:false}}}}});
+}
+
+
+// ── GROWTH SECTION TOGGLE FUNCTIONS ──
+function switchGrowthView(gid,view){
+  var card=document.getElementById('ch-'+gid+'-mauGrowth').closest('.cc');
+  card.querySelectorAll('.act-toggle').forEach(function(b){b.classList.toggle('active',view==='type'?b.textContent.includes('Type'):b.textContent.includes('Platform'));});
+  if(CI['ch-'+gid+'-mauGrowth']){CI['ch-'+gid+'-mauGrowth'].destroy();delete CI['ch-'+gid+'-mauGrowth'];}
+  document.getElementById('ch-'+gid+'-mauGrowth').innerHTML='';
+  var g=GAMES.find(function(x){return x.id===gid;});
+  if(view==='type'){renderGrowthByType(gid,g);}else{renderGrowthByPlatform(gid,g);}
+}
+function renderGrowthByType(gid,g){
+  var acts=g.nu;
+  var res=g.nu.map(function(v){return +(v*0.3).toFixed(2);});
+  var churnArr=g.nu.map(function(v,i){return -(+(v*0.7+g.nu[i]*0.3*0.1).toFixed(2));});
+  var net=acts.map(function(v,i){return +(v+res[i]+churnArr[i]).toFixed(2);});
+  mk('ch-'+gid+'-mauGrowth',{type:'bar',data:{labels:M,datasets:[
+    {label:'Activations',data:acts,backgroundColor:C.green,borderRadius:4,barPercentage:.7,stack:'g',datalabels:{display:false}},
+    {label:'Resurrections',data:res,backgroundColor:C.teal,borderRadius:4,barPercentage:.7,stack:'g',datalabels:{display:false}},
+    {label:'Churn',data:churnArr,backgroundColor:C.red,borderRadius:4,barPercentage:.7,stack:'g',datalabels:{display:false}},
+    {label:'Net Growth',data:net,type:'line',borderColor:'#fff',borderWidth:2.5,pointRadius:3,fill:false,tension:.35,datalabels:lastPtLabel('M')}
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'top',labels:{font:{size:8}}},datalabels:{display:false}},
+    scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:'Users (M)'}}}}});
+}
+function renderGrowthByPlatform(gid,g){
+  var conGr=g.mC.map(function(v,i){return i===0?0:+(v-g.mC[i-1]).toFixed(2);});
+  var pcGr=g.mP.map(function(v,i){return i===0?0:+(v-g.mP[i-1]).toFixed(2);});
+  var clGr=g.mCl.map(function(v,i){return i===0?0:+(v-g.mCl[i-1]).toFixed(2);});
+  mk('ch-'+gid+'-mauGrowth',{type:'bar',data:{labels:M,datasets:[
+    {label:'Console',data:conGr,backgroundColor:C.green,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
+    {label:'PC',data:pcGr,backgroundColor:C.blue,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
+    {label:'Cloud',data:clGr,backgroundColor:C.purple,borderRadius:4,barPercentage:.7,datalabels:stackedTopLabel('M')}
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'top',labels:{font:{size:8}}},datalabels:{display:false}},
+    scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:'MoM \u0394 (M)'}}}}});
+}
+
+function switchIntensity(gid,view){
+  var card=document.getElementById('ch-'+gid+'-mauIntensity').closest('.cc');
+  card.querySelectorAll('.act-toggle').forEach(function(b){b.classList.toggle('active',view==='games'?b.textContent.includes('Games'):b.textContent.includes('Platforms'));});
+  if(CI['ch-'+gid+'-mauIntensity']){CI['ch-'+gid+'-mauIntensity'].destroy();delete CI['ch-'+gid+'-mauIntensity'];}
+  document.getElementById('ch-'+gid+'-mauIntensity').innerHTML='';
+  var g=GAMES.find(function(x){return x.id===gid;});
+  if(view==='games'){renderIntensityGames(gid,g);}else{renderIntensityPlatforms(gid,g);}
+}
+function renderIntensityGames(gid,g){
+  var g1=tr(45,38);var g2=tr(32,35);var g3=tr(23,27);
+  mk('ch-'+gid+'-mauIntensity',{type:'bar',data:{labels:M,datasets:[
+    {label:'1 game',data:g1,backgroundColor:C.blue,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
+    {label:'2 games',data:g2,backgroundColor:C.teal,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
+    {label:'3+ games',data:g3,backgroundColor:C.lime,borderRadius:4,barPercentage:.7,datalabels:stackedTopLabel('%')}
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'top',labels:{font:{size:8}}},datalabels:{display:false}},
+    scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:'% of MAU'},max:100}}}});
+}
+function renderIntensityPlatforms(gid,g){
+  var p1=tr(58,50);var p2=tr(28,32);var p3=tr(14,18);
+  mk('ch-'+gid+'-mauIntensity',{type:'bar',data:{labels:M,datasets:[
+    {label:'1 platform',data:p1,backgroundColor:C.blue,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
+    {label:'2 platforms',data:p2,backgroundColor:C.purple,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
+    {label:'3+ platforms',data:p3,backgroundColor:C.cyan,borderRadius:4,barPercentage:.7,datalabels:stackedTopLabel('%')}
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'top',labels:{font:{size:8}}},datalabels:{display:false}},
+    scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:'% of MAU'},max:100}}}});
+}
+
+function switchActView(gid,view){
+  var card=document.getElementById('ch-'+gid+'-actChannel').closest('.cc');
+  card.querySelectorAll('.act-toggle').forEach(function(b){b.classList.toggle('active',view==='channel'?b.textContent.includes('Channel'):b.textContent.includes('Platform'));});
+  if(CI['ch-'+gid+'-actChannel']){CI['ch-'+gid+'-actChannel'].destroy();delete CI['ch-'+gid+'-actChannel'];}
+  document.getElementById('ch-'+gid+'-actChannel').innerHTML='';
+  var g=GAMES.find(function(x){return x.id===gid;});
+  if(view==='channel'){renderActByChannel(gid,g);}else{renderActByPlatform(gid,g);}
+}
+function renderActByChannel(gid,g){
+  var organic=g.nu.map(function(v){return +(v*0.42).toFixed(2);});
+  var paidMkt=g.nu.map(function(v){return +(v*0.25).toFixed(2);});
+  var gpTrial=g.nu.map(function(v){return +(v*0.18).toFixed(2);});
+  var social=g.nu.map(function(v){return +(v*0.15).toFixed(2);});
+  mk('ch-'+gid+'-actChannel',{type:'bar',data:{labels:M,datasets:[
+    {label:'Organic',data:organic,backgroundColor:C.green,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
+    {label:'Paid Marketing',data:paidMkt,backgroundColor:C.blue,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
+    {label:'GP Trial',data:gpTrial,backgroundColor:C.lime,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
+    {label:'Store/Social',data:social,backgroundColor:C.purple,borderRadius:4,barPercentage:.7,datalabels:stackedTopLabel('M')}
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'top',labels:{font:{size:8}}},datalabels:{display:false}},
+    scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:'Activations (M)'}}}}});
+}
+function renderActByPlatform(gid,g){
+  var conAct=g.nu.map(function(v){return +(v*0.50).toFixed(2);});
+  var pcAct=g.nu.map(function(v){return +(v*0.35).toFixed(2);});
+  var clAct=g.nu.map(function(v){return +(v*0.15).toFixed(2);});
+  mk('ch-'+gid+'-actChannel',{type:'bar',data:{labels:M,datasets:[
+    {label:'Console',data:conAct,backgroundColor:C.green,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
+    {label:'PC',data:pcAct,backgroundColor:C.blue,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
+    {label:'Cloud',data:clAct,backgroundColor:C.purple,borderRadius:4,barPercentage:.7,datalabels:stackedTopLabel('M')}
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'top',labels:{font:{size:8}}},datalabels:{display:false}},
+    scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:'Activations (M)'}}}}});
+}
+
+function switchResView(gid,view){
+  var card=document.getElementById('ch-'+gid+'-resByChurn').closest('.cc');
+  card.querySelectorAll('.act-toggle').forEach(function(b){b.classList.toggle('active',view==='duration'?b.textContent.includes('Duration'):b.textContent.includes('Platform'));});
+  if(CI['ch-'+gid+'-resByChurn']){CI['ch-'+gid+'-resByChurn'].destroy();delete CI['ch-'+gid+'-resByChurn'];}
+  document.getElementById('ch-'+gid+'-resByChurn').innerHTML='';
+  var g=GAMES.find(function(x){return x.id===gid;});
+  if(view==='duration'){renderResByDuration(gid,g);}else{renderResByPlatform(gid,g);}
+}
+function renderResByDuration(gid,g){
+  var res=g.nu.map(function(v){return +(v*0.3).toFixed(2);});
+  var r03=res.map(function(v){return +(v*0.50).toFixed(2);});
+  var r312=res.map(function(v){return +(v*0.32).toFixed(2);});
+  var r12p=res.map(function(v){return +(v*0.18).toFixed(2);});
+  mk('ch-'+gid+'-resByChurn',{type:'bar',data:{labels:M,datasets:[
+    {label:'0-3 mo',data:r03,backgroundColor:C.teal,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
+    {label:'3-12 mo',data:r312,backgroundColor:C.blue,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
+    {label:'12+ mo',data:r12p,backgroundColor:C.purple,borderRadius:4,barPercentage:.7,datalabels:stackedTopLabel('M')}
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'top',labels:{font:{size:8}}},datalabels:{display:false}},
+    scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:'Resurrections (M)'}}}}});
+}
+function renderResByPlatform(gid,g){
+  var res=g.nu.map(function(v){return +(v*0.3).toFixed(2);});
+  var rCon=res.map(function(v){return +(v*0.48).toFixed(2);});
+  var rPC=res.map(function(v){return +(v*0.35).toFixed(2);});
+  var rCl=res.map(function(v){return +(v*0.17).toFixed(2);});
+  mk('ch-'+gid+'-resByChurn',{type:'bar',data:{labels:M,datasets:[
+    {label:'Console',data:rCon,backgroundColor:C.green,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
+    {label:'PC',data:rPC,backgroundColor:C.blue,borderRadius:4,barPercentage:.7,datalabels:{display:false}},
+    {label:'Cloud',data:rCl,backgroundColor:C.purple,borderRadius:4,barPercentage:.7,datalabels:stackedTopLabel('M')}
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'top',labels:{font:{size:8}}},datalabels:{display:false}},
+    scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:'Resurrections (M)'}}}}});
 }
 
 // Initial render
