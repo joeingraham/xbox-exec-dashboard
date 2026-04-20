@@ -686,26 +686,6 @@ function buildPanel(g){
     h+='</div>';
   });
   h+='</div>';
-
-  // Funnel visualization
-  if(g.funnel){
-    h+='<div class="cc" style="margin-bottom:14px"><div class="ct">Player Funnel</div><div class="cs">Conversion from install to retained user</div><div class="fnl">';
-    const fl=g.funnelLbl||["Install","1st Sess","D1","D7","D14","D30"];
-    g.funnel.forEach((v,i)=>{
-      const pct=i===0?"100%":((v/g.funnel[0])*100).toFixed(0)+"%";
-      const h2=12+(v/g.funnel[0])*80;
-      const w=40+(v/g.funnel[0])*60;
-      const fmt=v>=1?(v>=100?v.toFixed(0)+"M":v.toFixed(1)+"M"):(v*1000).toFixed(0)+"K";
-      const arr=i<g.funnel.length-1?'<span class="fnl-a">\u2192</span>':"";
-      h+='<div class="fnl-s"><div class="fnl-bar" style="width:'+w+'%;height:'+h2+'px;background:'+ac+'"></div><div class="fv">'+fmt+'</div><div class="fl">'+fl[i]+'</div><div class="fp" style="color:'+ac+'">'+pct+'</div></div>'+arr;
-    });
-    h+='</div></div>';
-  }
-
-  // Play Frequency Distribution
-  h+='<div class="cg g1">';
-  h+='<div class="cc"><div class="ct">Play Frequency Distribution</div><div class="cs">% of MAU by days played per week</div><div class="cw" id="ch-'+g.id+'-playFreq"></div></div>';
-  h+='</div>';
   h+='</div>'; // close exec section
 
   // ── GROWTH ──
@@ -742,6 +722,27 @@ function buildPanel(g){
 
   // ── ENGAGEMENT ──
   h+='<div class="sec" id="s-'+g.id+'-engage"><div class="sec-t">Engagement & Playtime<span class="ill">(Illustrative Data)</span></div>';
+
+  // Player Funnel
+  if(g.funnel){
+    h+='<div class="cc" style="margin-bottom:14px"><div class="ct">Player Funnel</div><div class="cs">Conversion from install to retained user</div><div class="fnl">';
+    const fl=g.funnelLbl||["Install","1st Sess","D1","D7","D14","D30"];
+    g.funnel.forEach((v,i)=>{
+      const pct=i===0?"100%":((v/g.funnel[0])*100).toFixed(0)+"%";
+      const h2=12+(v/g.funnel[0])*80;
+      const w=40+(v/g.funnel[0])*60;
+      const fmt=v>=1?(v>=100?v.toFixed(0)+"M":v.toFixed(1)+"M"):(v*1000).toFixed(0)+"K";
+      const arr=i<g.funnel.length-1?'<span class="fnl-a">\u2192</span>':"";
+      h+='<div class="fnl-s"><div class="fnl-bar" style="width:'+w+'%;height:'+h2+'px;background:'+ac+'"></div><div class="fv">'+fmt+'</div><div class="fl">'+fl[i]+'</div><div class="fp" style="color:'+ac+'">'+pct+'</div></div>'+arr;
+    });
+    h+='</div></div>';
+  }
+
+  // Play Frequency Distribution
+  h+='<div class="cg g1" style="margin-bottom:14px">';
+  h+='<div class="cc"><div class="ct">Play Frequency Distribution</div><div class="cs">% of MAU by days played per week</div><div class="cw" id="ch-'+g.id+'-playFreq"></div></div>';
+  h+='</div>';
+
   h+='<div class="cg g2"><div class="cc"><div class="ct">Minutes per User per Day</div><div class="cs">3-year fiscal year comparison</div><div class="cw" id="ch-'+g.id+'-mpd"></div></div>';
   h+='<div class="cc"><div class="ct">DAU/MAU Stickiness</div><div class="cs">3-year fiscal year comparison</div><div class="cw" id="ch-'+g.id+'-stk"></div></div></div>';
   h+='<div class="cg g3"><div class="cc"><div class="ct">Session Duration (min)</div><div class="cs">3-year fiscal year comparison</div><div class="cw short" id="ch-'+g.id+'-sLen"></div></div>';
