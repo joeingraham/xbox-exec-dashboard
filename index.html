@@ -576,6 +576,7 @@ Chart.defaults.elements.line.tension=.35;Chart.defaults.elements.line.borderWidt
 Chart.defaults.elements.point.radius=3;Chart.defaults.elements.point.hoverRadius=6;
 Chart.defaults.scale.grid={color:"rgba(255,255,255,.05)",drawBorder:false};
 Chart.defaults.scale.ticks={padding:6,font:{size:9}};
+if(typeof ChartDataLabels!=='undefined'){Chart.register(ChartDataLabels);}
 Chart.defaults.plugins.datalabels={display:false};
 
 // ═══════════════════════════════════════════════════════════════
